@@ -51,6 +51,8 @@ class XboxController:
         self.timeout_s = float(timeout_s)
         self.last_read = time.monotonic()
         self.attached = True
+        self.control_mode = "head"
+        self._y_was_pressed = False
 
     def read(self) -> tuple[dict[str, float], bool, bool]:
         self.pygame.event.pump()
@@ -68,7 +70,16 @@ class XboxController:
             self.last_read = time.monotonic()
         a_pressed = bool(self.device.get_button(0))
         b_pressed = bool(self.device.get_button(1))
+        y_pressed = bool(self.device.get_button(3))
+        if y_pressed and not self._y_was_pressed:
+            self.control_mode = "walk" if self.control_mode == "head" else "head"
+        self._y_was_pressed = y_pressed
+        if self.control_mode == "walk":
+            axes = {name: 0.0 for name in axes}
         return axes, a_pressed, b_pressed
+
+    def mode(self) -> str:
+        return self.control_mode
 
     def fresh(self) -> bool:
         return self.attached and time.monotonic() - self.last_read <= self.timeout_s
@@ -76,4 +87,3 @@ class XboxController:
     def close(self) -> None:
         self.device.quit()
         self.pygame.quit()
-

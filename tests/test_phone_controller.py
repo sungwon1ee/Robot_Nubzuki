@@ -35,6 +35,9 @@ class PhoneControllerTests(unittest.TestCase):
         self.assertNotIn("http://", page.split("<script>")[-1])
         for axis in AXES:
             self.assertIn(axis, page)
+        self.assertIn("border-radius:50%", page)
+        self.assertIn("MODE · HEAD", page)
+        self.assertIn("MODE · WALK", page)
 
     def test_no_input_is_not_fresh(self):
         self.assertFalse(self.controller.fresh())
@@ -51,6 +54,16 @@ class PhoneControllerTests(unittest.TestCase):
         self.assertTrue(a_pressed)
         self.assertFalse(b_pressed)
         self.assertTrue(self.controller.fresh())
+
+    def test_control_mode_is_validated(self):
+        self.assertEqual(self.controller.mode(), "head")
+        post(self.url, {"mode": "walk"})
+        self.assertEqual(self.controller.mode(), "walk")
+        post(self.url, {"mode": "walk", "left_x": 1.0, "right_y": -1.0})
+        axes, _, _ = self.controller.read()
+        self.assertEqual(axes, {name: 0.0 for name in AXES})
+        post(self.url, {"mode": "not-a-mode"})
+        self.assertEqual(self.controller.mode(), "head")
 
     def test_a_lost_connection_recentres_instead_of_holding_deflection(self):
         post(self.url, {"left_x": 1.0, "a": True})

@@ -21,22 +21,27 @@ header{display:flex;align-items:center;gap:10px;padding:2px 4px 10px}
 #dot{width:9px;height:9px;border-radius:50%;background:var(--stop);flex:none}
 #dot.live{background:var(--live)}
 #status{color:var(--dim);font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#pads{flex:1;display:flex;gap:10px;min-height:0}
-.pad{flex:1;position:relative;background:var(--panel);border:1px solid var(--edge);border-radius:16px;overflow:hidden}
-.pad .name{position:absolute;top:9px;left:0;right:0;text-align:center;font-size:11px;letter-spacing:.09em;color:var(--dim)}
-.pad .val{position:absolute;bottom:9px;left:0;right:0;text-align:center;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
-.pad .cross{position:absolute;inset:22px;border-radius:12px;
+#pads{flex:1;display:flex;align-items:center;justify-content:space-around;gap:14px;min-height:0}
+.pad{position:relative;width:min(42vw,42vh);height:min(42vw,42vh);max-width:360px;max-height:360px;
+  background:radial-gradient(circle at 38% 34%,#273247,#161d29 72%);border:2px solid var(--edge);
+  border-radius:50%;overflow:hidden;box-shadow:inset 0 0 0 8px #0d121a66,0 14px 36px #0008}
+.pad .name{position:absolute;z-index:2;top:13%;left:8%;right:8%;text-align:center;font-size:11px;letter-spacing:.09em;color:var(--dim)}
+.pad .val{position:absolute;z-index:2;bottom:12%;left:8%;right:8%;text-align:center;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+.pad .cross{position:absolute;inset:16%;border-radius:50%;
   background:linear-gradient(var(--edge),var(--edge)) center/1px 100% no-repeat,
              linear-gradient(var(--edge),var(--edge)) center/100% 1px no-repeat}
 .knob{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;
-  background:#3b82f6;border:2px solid #93c5fd;pointer-events:none;transition:background .12s}
-.pad.held .knob{background:#60a5fa}
-#row{display:flex;gap:10px;padding-top:10px}
+  background:radial-gradient(circle at 35% 28%,#93c5fd,#2563eb 68%);border:2px solid #bfdbfe;
+  box-shadow:0 8px 18px #0008,inset 0 1px 3px #fff8;pointer-events:none;transition:background .12s}
+.pad.held .knob{background:radial-gradient(circle at 35% 28%,#bfdbfe,#3b82f6 68%)}
+.row{display:flex;gap:10px;padding-top:10px}
 button{flex:1;padding:15px 0;font-size:16px;font-weight:600;color:var(--text);
   background:var(--panel);border:1px solid var(--edge);border-radius:14px}
 button:active{background:#27334a}
+#mode{border-color:#1d4ed8;color:#bfdbfe}
 #b{border-color:#7f1d1d;color:#fecaca}
 #opts{display:flex;flex-wrap:wrap;gap:8px 14px;padding:10px 4px 0;font-size:12px;color:var(--dim)}
+#opts[hidden]{display:none}
 label{display:flex;align-items:center;gap:5px}
 </style>
 </head>
@@ -48,7 +53,8 @@ label{display:flex;align-items:center;gap:5px}
   <div class="pad" id="right"><div class="cross"></div><div class="name">HEAD ROLL / NECK PITCH</div>
     <div class="knob"></div><div class="val">0.00, 0.00</div></div>
 </div>
-<div id="row"><button id="a">A · 시작</button><button id="b">B · 정지</button></div>
+<div class="row"><button id="mode">MODE · HEAD</button></div>
+<div class="row"><button id="a">A · 시작</button><button id="b">B · 정지</button></div>
 <div id="opts">
   <label><input type="checkbox" data-flip="left_x">yaw 반전</label>
   <label><input type="checkbox" data-flip="left_y">pitch 반전</label>
@@ -56,7 +62,7 @@ label{display:flex;align-items:center;gap:5px}
   <label><input type="checkbox" data-flip="right_y">neck 반전</label>
 </div>
 <script>
-const state={left_x:0,left_y:0,right_x:0,right_y:0,a:false,b:false};
+const state={left_x:0,left_y:0,right_x:0,right_y:0,a:false,b:false,mode:'head'};
 const flip={left_x:1,left_y:1,right_x:1,right_y:1};
 document.querySelectorAll('[data-flip]').forEach(box=>{
   box.addEventListener('change',()=>{flip[box.dataset.flip]=box.checked?-1:1});
@@ -85,9 +91,22 @@ function stick(id,xKey,yKey){
   pad.addEventListener('pointermove',e=>{if(e.pointerId===touchId){move(e);e.preventDefault()}});
   for(const type of ['pointerup','pointercancel','lostpointercapture'])
     pad.addEventListener(type,e=>{if(e.pointerId===touchId){touchId=null;centre()}});
+  return centre;
 }
-stick('left','left_x','left_y');
-stick('right','right_x','right_y');
+const centreLeft=stick('left','left_x','left_y');
+const centreRight=stick('right','right_x','right_y');
+
+const modeButton=document.getElementById('mode');
+function renderMode(){
+  const head=state.mode==='head';
+  modeButton.textContent=head?'MODE · HEAD':'MODE · WALK';
+  document.querySelector('#left .name').textContent=head?'HEAD YAW / PITCH':'STRAFE / FORWARD';
+  document.querySelector('#right .name').textContent=head?'HEAD ROLL / NECK PITCH':'TURN / UNUSED';
+  document.getElementById('opts').hidden=!head;
+  centreLeft();centreRight();
+}
+modeButton.addEventListener('click',()=>{state.mode=state.mode==='head'?'walk':'head';renderMode()});
+renderMode();
 
 for(const [id,key] of [['a','a'],['b','b']]){
   const button=document.getElementById(id);
@@ -104,7 +123,7 @@ async function send(){
       body:JSON.stringify(state)});
     if(!response.ok)throw new Error('HTTP '+response.status);
     failures=0;dot.classList.add('live');
-    status.textContent='연결됨 · 스틱을 놓으면 정면으로 복귀';
+    status.textContent=state.mode==='head'?'연결됨 · HEAD 모드':'연결됨 · WALK 모드 (standing 이동 비활성)';
   }catch(error){
     failures++;
     if(failures>2){dot.classList.remove('live');status.textContent='연결 끊김 — 시뮬레이터가 실행 중인지 확인'}

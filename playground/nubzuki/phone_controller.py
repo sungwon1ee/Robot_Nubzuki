@@ -41,6 +41,7 @@ class PhoneController:
         self._axes = {name: 0.0 for name in AXES}
         self._a_pressed = False
         self._b_pressed = False
+        self.control_mode = "head"
         self._last_input = 0.0
         self._connected = False
         controller = self
@@ -92,6 +93,8 @@ class PhoneController:
             axes[name] = max(-1.0, min(1.0, value))
         with self._lock:
             self._axes = axes
+            mode = str(payload.get("mode", "head"))
+            self.control_mode = mode if mode in ("walk", "head") else "head"
             self._a_pressed = bool(payload.get("a", False))
             self._b_pressed = bool(payload.get("b", False))
             self._last_input = time.monotonic()
@@ -103,7 +106,12 @@ class PhoneController:
                 # Hold no stale deflection: an unreachable phone recentres the head.
                 self._axes = {name: 0.0 for name in AXES}
                 self._a_pressed = False
-            return dict(self._axes), self._a_pressed, self._b_pressed
+            axes = (
+                dict(self._axes)
+                if self.control_mode == "head"
+                else {name: 0.0 for name in AXES}
+            )
+            return axes, self._a_pressed, self._b_pressed
 
     def fresh(self) -> bool:
         """True only while samples are actually arriving."""
@@ -115,6 +123,10 @@ class PhoneController:
     def waiting(self) -> bool:
         with self._lock:
             return not self._connected
+
+    def mode(self) -> str:
+        with self._lock:
+            return self.control_mode
 
     def close(self) -> None:
         self.server.shutdown()
