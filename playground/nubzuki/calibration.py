@@ -55,6 +55,9 @@ class NubzukiCalibration:
             low, high = self.limits_rad(name)
             if not low < high:
                 raise ValueError(f"Invalid limits for {name}: {low}, {high}")
+            park = self.park_rad(name)
+            if not low <= park <= high:
+                raise ValueError(f"Park pose for {name} is outside its limits: {park}")
 
     @property
     def observation_size(self) -> int:
@@ -93,6 +96,10 @@ class NubzukiCalibration:
     def limits_rad(self, name: str) -> tuple[float, float]:
         low, high = self.joints[name]["limits_deg"]
         return math.radians(float(low)), math.radians(float(high))
+
+    def park_rad(self, name: str) -> float:
+        """The supported pose the robot is lowered onto when the loop exits."""
+        return math.radians(float(self.joints[name]["park_deg"]))
 
     def logical_to_servo(self, name: str, logical_rad: float) -> float:
         return self.direction(name) * float(logical_rad) + self.offset_rad(name)

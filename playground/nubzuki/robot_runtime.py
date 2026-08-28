@@ -1,4 +1,4 @@
-"""Standing policy hardware loop with fail-closed preflight."""
+"""Standing policy hardware loop that never drops the robot on its own."""
 
 from __future__ import annotations
 
@@ -15,6 +15,12 @@ from playground.nubzuki.policy import ObservationBuilder, StandingPolicy
 from playground.nubzuki.sensors import FootContacts, ImuSensor
 
 
+# Fraction of the servo velocity limit used while lowering onto the park pose.
+# Slow enough to watch and catch, fast enough to finish in well under a second.
+PARK_SPEED_FRACTION = 0.2
+PARK_TOLERANCE_RAD = 1e-4
+
+
 def _make_controller(control: str, host: str, web_port: int):
     if control == "phone":
         from playground.nubzuki.phone_controller import PhoneController
@@ -24,6 +30,34 @@ def _make_controller(control: str, host: str, web_port: int):
         print(f"\nOpen this on your phone, on the same network:\n    {controller.url}\n")
         return controller
     return XboxController()
+
+
+def park(hardware: ServoHardware, calibration: NubzukiCalibration,
+         from_targets, dt: float) -> None:
+    """Slew onto the calibrated park pose and keep holding it, torque on.
+
+    A standing robot must not go limp: releasing fourteen servos at once is a
+    fall, not a stop. Nothing the running loop can do cuts torque - not a lost
+    controller, not an exception, not the B button. The servos are released
+    only by cutting power, with the robot already supported.
+    """
+    order = calibration.joint_order
+    target = np.asarray([calibration.park_rad(name) for name in order])
+    position = np.asarray(from_targets, dtype=float).copy()
+    max_delta = (
+        float(calibration.data["runtime"]["max_motor_velocity_rad_s"])
+        * dt
+        * PARK_SPEED_FRACTION
+    )
+    # Bounded so a servo that stops acknowledging cannot spin here forever.
+    for _ in range(int(5.0 / dt)):
+        error = target - position
+        if float(np.max(np.abs(error))) <= PARK_TOLERANCE_RAD:
+            break
+        position = position + np.clip(error, -max_delta, max_delta)
+        hardware.set_positions(dict(zip(order, position)))
+        time.sleep(dt)
+    hardware.set_positions(dict(zip(order, target)))
 
 
 def run_robot(policy_path: str, port: str, calibration_path: str | None,
@@ -45,18 +79,19 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
     builder = ObservationBuilder()
     limiter = HeadTrajectoryLimiter(profile)
     armed = False
+    link_lost = False
     previous_targets = np.zeros(14)
     a_was_pressed = False
     dt = 1.0 / calibration.control_frequency_hz
     try:
         hardware.disable_torque()
         hardware.preflight()
-        print("Preflight OK. Press A to arm; press B for immediate torque off.")
+        print("Preflight OK. Press A to arm; press B to park and stop.")
         while True:
             started = time.monotonic()
             axes, a_pressed, b_pressed = controller.read()
             if b_pressed:
-                print("Emergency stop")
+                print("Stop requested")
                 break
             if not armed:
                 if a_pressed and not a_was_pressed:
@@ -73,8 +108,20 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 a_was_pressed = a_pressed
                 time.sleep(max(0.0, dt - (time.monotonic() - started)))
                 continue
-            if not controller.fresh():
-                raise RuntimeError("Joystick data is stale")
+            # A dropped controller is not a reason to stop. The sticks only steer
+            # the head, and `PhoneController.read` already zeroes a stale sample
+            # so the head recentres; the standing policy keeps the legs under
+            # the robot. Raising here turned a Wi-Fi hiccup into a fall.
+            if controller.fresh():
+                if link_lost:
+                    print("Controller link restored")
+                    link_lost = False
+            elif not link_lost:
+                print(
+                    "Controller link lost - head recentring, standing policy "
+                    "still running. Ctrl-C or B to park and stop."
+                )
+                link_lost = True
             raw_targets = axes_to_head_targets(axes, calibration, profile)
             head_targets = limiter.step(raw_targets)
             command = np.asarray([0.0, 0.0, 0.0] + [head_targets[name] for name in HEAD_JOINTS])
@@ -97,6 +144,18 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             previous_targets = requested
             time.sleep(max(0.0, dt - (time.monotonic() - started)))
     finally:
-        hardware.disable_torque()
+        try:
+            if not armed:
+                # Nothing was ever energised, so this only mirrors the state
+                # the loop started in. It is unreachable once the policy arms.
+                hardware.disable_torque()
+            else:
+                park(hardware, calibration, previous_targets, dt)
+                print(
+                    "Parked. Servos are still holding. Support the robot, then "
+                    "cut power to release them."
+                )
+        except Exception as error:  # Never mask whatever brought us here.
+            print(f"Park failed, holding last commanded pose: {error}")
         controller.close()
         feet.close()

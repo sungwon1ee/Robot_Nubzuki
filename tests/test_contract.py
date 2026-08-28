@@ -11,7 +11,22 @@ from playground.nubzuki.cli import build_parser
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
 from playground.nubzuki.policy import ObservationBuilder
 from playground.nubzuki.ppo_config import training_config
+from playground.nubzuki.robot_runtime import PARK_SPEED_FRACTION, park
 from playground.nubzuki.standing import default_config
+
+
+class RecordingHardware:
+    """Stands in for ServoHardware so the park path can be exercised offline."""
+
+    def __init__(self):
+        self.writes = []
+        self.torque_disabled = False
+
+    def set_positions(self, positions):
+        self.writes.append(dict(positions))
+
+    def disable_torque(self, names=None):
+        self.torque_disabled = True
 
 
 class StandingContractTests(unittest.TestCase):
@@ -118,6 +133,65 @@ class StandingContractTests(unittest.TestCase):
             config = training_config("macbook", 150_000_000, path)
             self.assertEqual(config["num_envs"], 512)
             self.assertEqual(config["num_timesteps"], 150_000_000)
+
+
+class SafeStopTests(unittest.TestCase):
+    """A dropped controller must never become a fall."""
+
+    def setUp(self):
+        self.calibration = NubzukiCalibration()
+
+    def test_stale_controller_does_not_abort_the_loop(self):
+        source = Path("playground/nubzuki/robot_runtime.py").read_text()
+        self.assertNotIn("Joystick data is stale", source)
+        # The only guard allowed to raise is the unmeasured-profile check,
+        # which runs before a single servo is energised. Once the loop is
+        # running, nothing may throw its way out to a torque cut.
+        loop = source.split("while True:", 1)[1]
+        self.assertNotIn("raise", loop)
+
+    def test_nothing_the_armed_loop_can_do_cuts_torque(self):
+        source = Path("playground/nubzuki/robot_runtime.py").read_text()
+        # Once armed there is no path back to a torque cut: not a lost
+        # controller, not an exception, not the B button. Both remaining
+        # calls sit in the pre-arm state the loop started in.
+        self.assertEqual(source.count("disable_torque()"), 2)
+        self.assertIn("if not armed:", source)
+        self.assertNotIn("emergency", source.lower())
+        after_arming = source.split("armed = True", 1)[1]
+        self.assertNotIn("disable_torque()", after_arming.split("if not armed:")[0])
+
+    def test_park_lands_on_the_calibrated_pose_without_cutting_torque(self):
+        hardware = RecordingHardware()
+        start = np.zeros(14)
+        park(hardware, self.calibration, start, dt=0.02)
+        self.assertFalse(hardware.torque_disabled)
+        self.assertTrue(hardware.writes)
+        for name in self.calibration.joint_order:
+            self.assertAlmostEqual(
+                hardware.writes[-1][name], self.calibration.park_rad(name)
+            )
+
+    def test_park_respects_the_servo_velocity_limit(self):
+        hardware = RecordingHardware()
+        start = np.zeros(14)
+        park(hardware, self.calibration, start, dt=0.02)
+        budget = (
+            float(self.calibration.data["runtime"]["max_motor_velocity_rad_s"])
+            * 0.02
+            * PARK_SPEED_FRACTION
+        )
+        previous = {name: 0.0 for name in self.calibration.joint_order}
+        for write in hardware.writes:
+            for name, value in write.items():
+                self.assertLessEqual(abs(value - previous[name]), budget + 1e-9)
+                previous[name] = value
+
+    def test_every_park_pose_is_inside_its_joint_limits(self):
+        for name in self.calibration.joint_order:
+            low, high = self.calibration.limits_rad(name)
+            self.assertGreaterEqual(self.calibration.park_rad(name), low)
+            self.assertLessEqual(self.calibration.park_rad(name), high)
 
 
 if __name__ == "__main__":
