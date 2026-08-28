@@ -20,6 +20,11 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(list(env_config.push_config.interval_range), [4.0, 8.0])
         self.assertEqual(list(env_config.push_config.magnitude_range), [0.1, 1.25])
 
+    def test_v3_policy_semantics_are_explicit(self):
+        source = Path("playground/nubzuki/runner.py").read_text()
+        self.assertIn('"model_semantics_version": 3', source)
+        self.assertEqual(NubzukiCalibration().data["runtime"]["head_kp"], 24)
+
     def test_robot_phone_control_defaults_to_port_8766(self):
         args = build_parser().parse_args(
             ["robot", "--policy", "policy.onnx", "--control", "phone"]

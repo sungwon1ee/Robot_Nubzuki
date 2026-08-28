@@ -27,6 +27,7 @@ class NubzukiStandingRunner(BaseRunner):
         self.obs_size = int(self.env.observation_size["state"][0])
         self.policy_metadata = {
             "schema_version": 2, "robot": "nubzuki", "policy": "standing",
+            "model_semantics_version": 3,
             "deployable": args.preset != "smoke",
             "upstream_commit": "ba59de88ab76163f2e0c2c95b4cd45fea5745106",
             "calibration_sha256": calibration.sha256,

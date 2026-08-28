@@ -38,7 +38,7 @@
   "runtime": {
     "max_motor_velocity_rad_s": 5.24,
     "leg_kp": 30,
-    "head_kp": 8,
+    "head_kp": 24,
     "low_kp": 2
   },
   "policy": {

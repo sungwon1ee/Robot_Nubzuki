@@ -28,6 +28,7 @@ class StandingPolicy:
         expected = {
             "observation_size": 85, "action_size": 14,
             "control_frequency_hz": 50, "calibration_sha256": calibration.sha256,
+            "model_semantics_version": 3,
         }
         for key, value in expected.items():
             if self.metadata.get(key) != value:
