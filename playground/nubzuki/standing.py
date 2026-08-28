@@ -80,8 +80,9 @@ def default_config() -> config_dict.ConfigDict:
         ),
         push_config=config_dict.create(
             enable=True,
-            interval_range=[4.0, 8.0],
-            magnitude_range=[0.1, 1.25],
+            interval_range=[0.5, 4.0],
+            force_range_n=[3.0, 20.0],
+            duration_range_s=[0.08, 0.20],
         ),
         neck_pitch_range=list(head_ranges["neck_pitch"]),
         head_pitch_range=list(head_ranges["head_pitch"]),
@@ -210,6 +211,7 @@ class Standing(NubzukiEnv):
             "push": jp.array([0.0, 0.0]),
             "push_step": 0,
             "push_interval_steps": push_interval_steps,
+            "push_remaining_steps": jp.array(0, dtype=jp.int32),
             "action_history": jp.zeros(
                 self._config.noise_config.action_max_delay * self._actuators
             ),
@@ -234,8 +236,15 @@ class Standing(NubzukiEnv):
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
         state.info["imitation_i"] = 0
         state.info["current_reference_motion"] = jp.zeros(0)
-        state.info["rng"], push1_rng, push2_rng, delay_rng = jax.random.split(
-            state.info["rng"], 4
+        (
+            state.info["rng"],
+            push1_rng,
+            push2_rng,
+            push_duration_rng,
+            push_interval_rng,
+            delay_rng,
+        ) = jax.random.split(
+            state.info["rng"], 6
         )
 
         action_history = (
@@ -255,21 +264,39 @@ class Standing(NubzukiEnv):
         ]
 
         push_theta = jax.random.uniform(push1_rng, maxval=2 * jp.pi)
-        push_magnitude = jax.random.uniform(
+        push_force_n = jax.random.uniform(
             push2_rng,
-            minval=self._config.push_config.magnitude_range[0],
-            maxval=self._config.push_config.magnitude_range[1],
+            minval=self._config.push_config.force_range_n[0],
+            maxval=self._config.push_config.force_range_n[1],
         )
-        push = jp.array([jp.cos(push_theta), jp.sin(push_theta)])
-        push *= (
+        push_event = (
             jp.mod(state.info["push_step"] + 1, state.info["push_interval_steps"])
             == 0
         )
-        push *= self._config.push_config.enable
-        qvel = state.data.qvel.at[
-            self._floating_base_qvel_addr : self._floating_base_qvel_addr + 2
-        ].add(push * push_magnitude)
-        state = state.replace(data=state.data.replace(qvel=qvel))
+        push_event &= self._config.push_config.enable
+        sampled_push = (
+            jp.array([jp.cos(push_theta), jp.sin(push_theta)]) * push_force_n
+        )
+        push_duration_s = jax.random.uniform(
+            push_duration_rng,
+            minval=self._config.push_config.duration_range_s[0],
+            maxval=self._config.push_config.duration_range_s[1],
+        )
+        sampled_duration_steps = jp.maximum(
+            jp.round(push_duration_s / self.dt).astype(jp.int32), 1
+        )
+        remaining_steps = jp.where(
+            push_event,
+            sampled_duration_steps,
+            state.info["push_remaining_steps"],
+        )
+        push = jp.where(push_event, sampled_push, state.info["push"])
+        applied_push = jp.where(remaining_steps > 0, push, jp.zeros(2))
+        wrench = jp.concatenate([applied_push, jp.zeros(4)])
+        xfrc_applied = state.data.xfrc_applied.at[self._torso_body_id].set(wrench)
+        state = state.replace(
+            data=state.data.replace(xfrc_applied=xfrc_applied)
+        )
 
         motor_targets = (
             self._default_actuator
@@ -300,9 +327,26 @@ class Standing(NubzukiEnv):
         }
         reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
 
-        state.info["push"] = push
+        remaining_steps = jp.maximum(remaining_steps - 1, 0)
+        state.info["push"] = jp.where(remaining_steps > 0, push, jp.zeros(2))
+        state.info["push_remaining_steps"] = remaining_steps
         state.info["step"] += 1
-        state.info["push_step"] += 1
+        state.info["push_step"] = jp.where(
+            push_event, 0, state.info["push_step"] + 1
+        )
+        next_push_interval = jax.random.uniform(
+            push_interval_rng,
+            minval=self._config.push_config.interval_range[0],
+            maxval=self._config.push_config.interval_range[1],
+        )
+        next_push_interval_steps = jp.maximum(
+            jp.round(next_push_interval / self.dt).astype(jp.int32), 1
+        )
+        state.info["push_interval_steps"] = jp.where(
+            push_event,
+            next_push_interval_steps,
+            state.info["push_interval_steps"],
+        )
         state.info["last_last_last_act"] = state.info["last_last_act"]
         state.info["last_last_act"] = state.info["last_act"]
         state.info["last_act"] = action
