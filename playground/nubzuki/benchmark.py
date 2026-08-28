@@ -84,6 +84,7 @@ def benchmark_device(output: Path) -> dict:
         # Steady state only: the compile pass is excluded, because it is paid
         # once per run and does not scale with the training length.
         "environment_steps_per_second": rate,
+        "device": selected.get("device"),
         "compile_seconds": selected.get("compile_seconds"),
         "peak_rss_bytes": selected["peak_rss_bytes"],
         "fastest_num_envs": fastest["num_envs"],
@@ -101,7 +102,8 @@ def benchmark_device(output: Path) -> dict:
             f"{SATURATION_TOLERANCE:.0%}, so the smaller count is used)"
         )
     print(
-        f"\nBackend {backend}. Selected {profile['num_envs']} environments at "
+        f"\nBackend {backend} ({selected.get('device', 'unknown')}). "
+        f"Selected {profile['num_envs']} environments at "
         f"{rate:,.0f} env steps/s{note}; compile {profile['compile_seconds']:.0f}s once.\n"
         f"Rollout only, without the PPO update: 10M steps is about "
         f"{profile['hours_per_10m_steps']:.2f} h, so expect training to be slower "

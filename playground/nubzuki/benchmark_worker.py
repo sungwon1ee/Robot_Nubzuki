@@ -14,7 +14,11 @@ import jax.numpy as jnp
 from playground.nubzuki.standing import Standing, default_config
 
 
-ROLLOUT_STEPS = 4
+# The timed rollout has to be long enough that per-call overhead — the reset,
+# the kernel launches, the host sync — does not dominate. Four steps was enough
+# on CPU, where a step is expensive, but on a GPU it measured mostly overhead.
+COMPILE_STEPS = 4
+STEADY_STEPS = 50
 REPEATS = 3
 
 
@@ -29,13 +33,20 @@ def run(num_envs: int) -> dict:
     actions = jnp.zeros((num_envs, env.action_size), dtype=jnp.float32)
 
     @jax.jit
-    def rollout(reset_keys, zero_actions):
-        state = jax.vmap(env.reset)(reset_keys)
-        def body(carry, _):
-            carry = jax.vmap(env.step)(carry, zero_actions)
-            return carry, None
-        state, _ = jax.lax.scan(body, state, None, length=ROLLOUT_STEPS)
-        return state.obs["state"]
+    def reset(reset_keys):
+        return jax.vmap(env.reset)(reset_keys)
+
+    def _stepper(length):
+        @jax.jit
+        def run(state, zero_actions):
+            def body(carry, _):
+                return jax.vmap(env.step)(carry, zero_actions), None
+            state, _ = jax.lax.scan(body, state, None, length=length)
+            return state
+        return run
+
+    warmup = _stepper(COMPILE_STEPS)
+    steady = _stepper(STEADY_STEPS)
 
     key = jax.random.PRNGKey(9)
     dims = (85, 512, 256, 128, 28)
@@ -63,24 +74,39 @@ def run(num_envs: int) -> dict:
     # with the rollout reports compile time dressed up as throughput, so the
     # two are measured separately and only the steady-state rate is reported.
     started = time.perf_counter()
-    observations = rollout(keys, actions)
+    state = reset(keys)
+    state.obs["state"].block_until_ready()
+    state = warmup(state, actions)
+    observations = state.obs["state"]
     observations.block_until_ready()
     loss, grads = gradient(params, observations)
     jax.tree_util.tree_leaves(grads)[0].block_until_ready()
     compile_seconds = time.perf_counter() - started
 
+    # Compile the steady-state function before timing it, and keep the reset
+    # outside the timed region so the rate is stepping cost and nothing else.
+    state = steady(state, actions)
+    state.obs["state"].block_until_ready()
+
     rates = []
+    steady_seconds = 0.0
     for _ in range(REPEATS):
         started = time.perf_counter()
-        observations = rollout(keys, actions)
-        observations.block_until_ready()
-        rates.append(num_envs * ROLLOUT_STEPS / (time.perf_counter() - started))
-    steady_seconds = sum(num_envs * ROLLOUT_STEPS / rate for rate in rates)
+        state = steady(state, actions)
+        state.obs["state"].block_until_ready()
+        elapsed = time.perf_counter() - started
+        steady_seconds += elapsed
+        rates.append(num_envs * STEADY_STEPS / elapsed)
+    observations = state.obs["state"]
+    loss, _ = gradient(params, observations)
 
     finite = bool(jnp.isfinite(observations).all() & jnp.isfinite(loss))
+    device = jax.devices()[0]
     return {
         "num_envs": num_envs,
         "backend": jax.default_backend(),
+        "device": getattr(device, "device_kind", str(device)),
+        "steps_timed": STEADY_STEPS * REPEATS,
         "finite": finite,
         "compile_seconds": compile_seconds,
         "steady_state_seconds": steady_seconds,
