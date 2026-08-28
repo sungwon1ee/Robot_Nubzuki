@@ -75,11 +75,21 @@ def _measure_joint(
 
 def identify_head(
     port: str, output: Path, calibration: NubzukiCalibration, assume_yes: bool = False,
+    control: str = "joystick", host: str = "0.0.0.0", web_port: int = 8766,
 ) -> dict:
     print(procedure())
     if not assume_yes and input("Type IDENTIFY to continue: ").strip() != "IDENTIFY":
         raise RuntimeError("Identification cancelled")
-    controller = XboxController()
+    if control == "phone":
+        from playground.nubzuki.phone_controller import PhoneController
+        controller = PhoneController(host=host, port=web_port)
+        print(f"Open this on your phone, on the same network:\n    {controller.url}")
+        print("Waiting for the phone controller to connect...")
+        while not controller.fresh():
+            time.sleep(0.05)
+        print("Phone controller connected. Keep both sticks released.")
+    else:
+        controller = XboxController()
     hardware = ServoHardware(calibration, port)
     head_kp = int(calibration.data["runtime"]["low_kp"])
     try:
@@ -105,4 +115,3 @@ def identify_head(
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(profile, indent=2, sort_keys=True), encoding="utf-8")
     return profile
-

@@ -74,6 +74,12 @@ def build_parser() -> argparse.ArgumentParser:
     identify = sub.add_parser("identify-head", help="measure joystick and head response")
     identify.add_argument("--port", default="/dev/ttyACM0")
     identify.add_argument("--output", default="config/head_dynamics.json")
+    identify.add_argument(
+        "--control", choices=("phone", "joystick"), default="joystick",
+        help="phone serves the identification controller over HTTP; joystick uses Xbox",
+    )
+    identify.add_argument("--host", default="0.0.0.0", help="phone control bind address")
+    identify.add_argument("--web-port", type=int, default=8766, help="phone control HTTP port")
     identify.add_argument("--dry-run", action="store_true")
     identify.add_argument("--yes", action="store_true")
     robot = sub.add_parser("robot", help="run the policy on physical Nubzuki")
@@ -119,7 +125,8 @@ def main() -> None:
             print(procedure())
         else:
             profile = identify_head(
-                args.port, Path(args.output), NubzukiCalibration(args.calibration), args.yes
+                args.port, Path(args.output), NubzukiCalibration(args.calibration), args.yes,
+                args.control, args.host, args.web_port,
             )
             print(json.dumps(profile, indent=2))
     elif args.command == "robot":

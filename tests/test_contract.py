@@ -21,6 +21,13 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(args.control, "phone")
         self.assertEqual(args.web_port, 8766)
 
+    def test_identify_head_supports_phone_control(self):
+        args = build_parser().parse_args(
+            ["identify-head", "--control", "phone"]
+        )
+        self.assertEqual(args.control, "phone")
+        self.assertEqual(args.web_port, 8766)
+
     def setUp(self):
         self.calibration = NubzukiCalibration()
         self.profile_data = {
