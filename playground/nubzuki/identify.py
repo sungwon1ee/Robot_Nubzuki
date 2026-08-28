@@ -64,8 +64,11 @@ def _measure_joint(
         delays.append(float(times[moved[0]]) if moved.size else float(times[-1]))
     velocity = 0.5 * float(np.median(peak_velocities))
     acceleration = 0.5 * float(np.median(peak_accelerations))
-    if velocity <= 0 or acceleration <= 0:
-        raise RuntimeError(f"No measurable response for {name}")
+    if velocity < 0.01 or acceleration < 0.05:
+        raise RuntimeError(
+            f"No measurable response for {name}: velocity={velocity:.4f} rad/s, "
+            f"acceleration={acceleration:.4f} rad/s^2"
+        )
     return {
         "response_delay_s": float(np.median(delays)),
         "velocity_limit_rad_s": velocity,
@@ -91,7 +94,9 @@ def identify_head(
     else:
         controller = XboxController()
     hardware = ServoHardware(calibration, port)
-    head_kp = int(calibration.data["runtime"]["low_kp"])
+    # Measure under the same gain used by the real policy. low_kp is only for
+    # gently entering the initial pose and may not overcome weight or friction.
+    head_kp = int(calibration.data["runtime"]["head_kp"])
     try:
         hardware.preflight()
         deadzone = _measure_deadzone(controller)
