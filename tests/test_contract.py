@@ -17,12 +17,12 @@ from playground.nubzuki.standing import default_config
 class StandingContractTests(unittest.TestCase):
     def test_v3_uses_physical_hip_roll_axes_and_random_force_pushes(self):
         env_config = default_config()
-        self.assertEqual(list(env_config.push_config.interval_range), [0.5, 4.0])
+        self.assertEqual(list(env_config.push_config.interval_range), [4.0, 8.0])
         self.assertEqual(
-            list(env_config.push_config.torso_force_range_n), [3.0, 20.0]
+            list(env_config.push_config.torso_force_range_n), [3.0, 10.0]
         )
         self.assertEqual(
-            list(env_config.push_config.head_force_range_n), [1.0, 6.0]
+            list(env_config.push_config.head_force_range_n), [1.0, 3.0]
         )
         self.assertEqual(
             list(env_config.push_config.duration_range_s), [0.08, 0.20]

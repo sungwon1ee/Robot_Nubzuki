@@ -80,9 +80,9 @@ def default_config() -> config_dict.ConfigDict:
         ),
         push_config=config_dict.create(
             enable=True,
-            interval_range=[0.5, 4.0],
-            torso_force_range_n=[3.0, 20.0],
-            head_force_range_n=[1.0, 6.0],
+            interval_range=[4.0, 8.0],
+            torso_force_range_n=[3.0, 10.0],
+            head_force_range_n=[1.0, 3.0],
             duration_range_s=[0.08, 0.20],
         ),
         neck_pitch_range=list(head_ranges["neck_pitch"]),
