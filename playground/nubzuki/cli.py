@@ -79,6 +79,12 @@ def build_parser() -> argparse.ArgumentParser:
     robot = sub.add_parser("robot", help="run the policy on physical Nubzuki")
     robot.add_argument("--policy", required=True)
     robot.add_argument("--port", default="/dev/ttyACM0")
+    robot.add_argument(
+        "--control", choices=("phone", "joystick"), default="joystick",
+        help="phone serves the standing controller over HTTP; joystick uses Xbox",
+    )
+    robot.add_argument("--host", default="0.0.0.0", help="phone control bind address")
+    robot.add_argument("--web-port", type=int, default=8766, help="phone control HTTP port")
     robot.add_argument("--head-profile", default="config/head_dynamics.json")
     robot.add_argument("--imu-upside-down", action="store_true")
     return parser
@@ -118,9 +124,11 @@ def main() -> None:
             print(json.dumps(profile, indent=2))
     elif args.command == "robot":
         from playground.nubzuki.robot_runtime import run_robot
-        run_robot(args.policy, args.port, args.calibration, args.head_profile, args.imu_upside_down)
+        run_robot(
+            args.policy, args.port, args.calibration, args.head_profile,
+            args.imu_upside_down, args.control, args.host, args.web_port,
+        )
 
 
 if __name__ == "__main__":
     main()
-

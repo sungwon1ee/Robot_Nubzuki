@@ -15,8 +15,19 @@ from playground.nubzuki.policy import ObservationBuilder, StandingPolicy
 from playground.nubzuki.sensors import FootContacts, ImuSensor
 
 
+def _make_controller(control: str, host: str, web_port: int):
+    if control == "phone":
+        from playground.nubzuki.phone_controller import PhoneController
+        controller = PhoneController(host=host, port=web_port)
+        print(f"\nOpen this on your phone, on the same network:\n    {controller.url}\n")
+        return controller
+    return XboxController()
+
+
 def run_robot(policy_path: str, port: str, calibration_path: str | None,
-              head_profile_path: str, imu_upside_down: bool = False) -> None:
+              head_profile_path: str, imu_upside_down: bool = False,
+              control: str = "joystick", host: str = "0.0.0.0",
+              web_port: int = 8766) -> None:
     calibration = NubzukiCalibration(calibration_path)
     profile = HeadDynamicsProfile.load(head_profile_path, calibration)
     if not profile.measured:
@@ -26,7 +37,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
         )
     policy = StandingPolicy(policy_path, calibration, profile)
     hardware = ServoHardware(calibration, port)
-    controller = XboxController()
+    controller = _make_controller(control, host, web_port)
     imu = ImuSensor(upside_down=imu_upside_down)
     feet = FootContacts()
     builder = ObservationBuilder()
@@ -87,4 +98,3 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
         hardware.disable_torque()
         controller.close()
         feet.close()
-

@@ -7,12 +7,20 @@ import numpy as np
 
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
 from playground.nubzuki.controller import apply_deadzone, axes_to_head_targets
+from playground.nubzuki.cli import build_parser
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
 from playground.nubzuki.policy import ObservationBuilder
 from playground.nubzuki.ppo_config import training_config
 
 
 class StandingContractTests(unittest.TestCase):
+    def test_robot_phone_control_defaults_to_port_8766(self):
+        args = build_parser().parse_args(
+            ["robot", "--policy", "policy.onnx", "--control", "phone"]
+        )
+        self.assertEqual(args.control, "phone")
+        self.assertEqual(args.web_port, 8766)
+
     def setUp(self):
         self.calibration = NubzukiCalibration()
         self.profile_data = {
