@@ -45,6 +45,21 @@ def validate(calibration_path: str | None = None) -> dict:
     randomized, _ = randomizer(env.mjx_model, jax.random.split(jax.random.PRNGKey(2), 2))
     if randomized.body_mass.shape[0] != 2:
         raise AssertionError("domain randomizer did not create a batch")
+    # Brax reassembles its 64-bit step counter from two 32-bit halves at the end
+    # of every epoch. Checking the behaviour rather than a version number costs
+    # a millisecond here and saves discovering it after the first epoch.
+    from brax.training.types import UInt64
+
+    try:
+        steps = int(UInt64(hi=1, lo=1024))
+    except TypeError as error:
+        raise AssertionError(
+            "Brax cannot convert its step counter with this NumPy "
+            f"({np.__version__}); install numpy>=2.1: {error}"
+        ) from error
+    if steps != (1 << 32) + 1024:
+        raise AssertionError(f"Brax step counter round-trip is wrong: {steps}")
+
     tree = Path(__file__).parent
     for path in tree.glob("*.py"):
         if path.name == "validate_setup.py":

@@ -24,8 +24,6 @@ def _rss_bytes() -> int:
 
 
 def run(num_envs: int) -> dict:
-    if jax.default_backend() != "cpu":
-        raise RuntimeError(f"Mac benchmark requires CPU backend, got {jax.default_backend()}")
     env = Standing(config=default_config())
     keys = jax.random.split(jax.random.PRNGKey(7), num_envs)
     actions = jnp.zeros((num_envs, env.action_size), dtype=jnp.float32)

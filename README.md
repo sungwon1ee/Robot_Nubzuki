@@ -28,12 +28,25 @@ Validate the model and observation/action contract. This does not train:
 .venv/bin/nubzuki-standing validate
 ```
 
-Select the largest of 256, 512, 1024 and 2048 environments whose isolated
-compile/rollout/gradient check remains finite and below 16 GiB peak RSS. This
-does not apply an optimizer update:
+Measure this device and record an environment count. Candidates are tried in an
+isolated process; the smallest count whose steady-state throughput is within 5%
+of the best is chosen, because throughput saturates long before memory does. The
+reported rate excludes the one-off compile pass and covers the rollout only, so
+training is slower than it suggests. No optimizer update is applied:
 
 ```bash
-.venv/bin/nubzuki-standing benchmark-mac
+.venv/bin/nubzuki-standing benchmark
+```
+
+## Colab
+
+`notebooks/nubzuki_standing_colab.ipynb` runs the same branch on a CUDA GPU,
+keeping checkpoints on Google Drive so a disconnect costs at most one checkpoint
+interval. Only macOS is pinned to the CPU backend; elsewhere JAX chooses, so a
+GPU machine uses its GPU. Install with the CUDA wheels instead:
+
+```bash
+pip install -e '.[gpu]'
 ```
 
 Only the following commands start PPO. `smoke` creates a non-deployable policy
@@ -103,7 +116,7 @@ already holds a run:
 
 TensorBoard logs are under `runs/standing/tensorboard`. Checkpoints, ONNX and
 metadata are stored every approximately five million environment steps. The
-Mac benchmark reports measured throughput; this project does not promise a
+benchmark reports measured throughput; this project does not promise a
 completion time for 150 million CPU steps.
 
 ## Head identification and joystick

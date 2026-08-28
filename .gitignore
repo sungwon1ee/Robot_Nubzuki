@@ -12,3 +12,6 @@ config/head_dynamics.json
 *.onnx
 *.pkl
 *.npz
+*.egg-info/
+build/
+dist/

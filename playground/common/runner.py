@@ -95,6 +95,7 @@ class BaseRunner:
             self.args.preset, remaining, Path(self.args.mac_profile),
             checkpoint_every=getattr(self.args, "checkpoint_every", None) or 5_000_000,
             num_eval_envs=getattr(self.args, "num_eval_envs", None),
+            num_envs=getattr(self.args, "num_envs", None),
         )
         checkpoints = max(self.ppo_params["num_evals"] - 1, 1)
         print(

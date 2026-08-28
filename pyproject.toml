@@ -9,7 +9,11 @@ description = "No-Placo Open Duck standing policy adapted to Nubzuki"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
-  "numpy==1.26.4",
+  # NumPy 2 or newer. Brax stores env_steps as a UInt64 pair and reassembles it
+  # with `(hi << 32) | lo`; under NumPy 1.x that promotes uint64 and a Python
+  # int to float64 and `left_shift` has no float loop, so every training run
+  # dies at the end of its first epoch. NEP 50 keeps the shift in uint64.
+  "numpy>=2.1,<3",
 ]
 
 [project.optional-dependencies]
@@ -25,6 +29,24 @@ mac-train = [
   "onnxruntime>=1.20.1",
   "orbax-checkpoint>=0.11.17",
   "pygame==2.6.1",
+  "tensorboard>=2.18.0",
+  "tensorboardX>=2.6.2.2",
+  "tensorflow>=2.18.0",
+  "tf2onnx>=1.17.0",
+]
+gpu = [
+  # For CUDA machines such as Colab. Same stack as mac-train with the CUDA JAX
+  # wheels instead of the CPU ones, and without the local control extras.
+  "brax==0.12.3",
+  "flax==0.11.1",
+  "jax[cuda12]==0.6.2",
+  "matplotlib>=3.10.0",
+  "mujoco==3.3.7",
+  "mujoco-mjx==3.3.7",
+  "playground==0.0.5",
+  "onnxruntime>=1.20.1",
+  "orbax-checkpoint>=0.11.17",
+  "tensorboard>=2.18.0",
   "tensorboardX>=2.6.2.2",
   "tensorflow>=2.18.0",
   "tf2onnx>=1.17.0",

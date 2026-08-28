@@ -5,9 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 from pathlib import Path
 
-os.environ.setdefault("JAX_PLATFORMS", "cpu")
+if platform.system() == "Darwin":
+    # Apple GPUs have no supported JAX path and jax-metal is experimental, so
+    # macOS is pinned to CPU. Elsewhere JAX picks its own backend, which is how
+    # a CUDA machine gets used. JAX_PLATFORMS in the environment still wins.
+    os.environ.setdefault("JAX_PLATFORMS", "cpu")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -15,13 +20,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--calibration", default=None)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate", help="validate model and policy ABI without training")
-    benchmark = sub.add_parser("benchmark-mac", help="select a safe Mac CPU env count")
-    benchmark.add_argument("--output", default=".local/mac_profile.json")
+    for name, help_text in (
+        ("benchmark", "measure this device and select a safe environment count"),
+        ("benchmark-mac", argparse.SUPPRESS),
+    ):
+        benchmark = sub.add_parser(name, help=help_text)
+        benchmark.add_argument("--output", default=".local/mac_profile.json")
     train = sub.add_parser("train", help="start PPO only when explicitly invoked")
-    train.add_argument("--preset", choices=("smoke", "macbook", "official"), default="macbook")
+    train.add_argument(
+        "--preset", choices=("smoke", "profile", "macbook", "official"), default="profile",
+        help="profile uses the benchmark result; macbook is an alias for it",
+    )
+    train.add_argument(
+        "--num-envs", type=int, default=None,
+        help="override the preset's environment count",
+    )
     train.add_argument("--num-timesteps", type=int, default=None)
     train.add_argument("--output", default="runs/standing")
-    train.add_argument("--mac-profile", default=".local/mac_profile.json")
+    train.add_argument(
+        "--device-profile", "--mac-profile", dest="mac_profile",
+        default=".local/mac_profile.json",
+        help="benchmark result to take the environment count from",
+    )
     train.add_argument(
         "--restore",
         default="auto",
@@ -71,9 +91,9 @@ def main() -> None:
     if args.command == "validate":
         from playground.nubzuki.validate_setup import validate
         print(json.dumps(validate(args.calibration), indent=2))
-    elif args.command == "benchmark-mac":
-        from playground.nubzuki.benchmark import benchmark_mac
-        print(json.dumps(benchmark_mac(Path(args.output)), indent=2))
+    elif args.command in ("benchmark", "benchmark-mac"):
+        from playground.nubzuki.benchmark import benchmark_device
+        print(json.dumps(benchmark_device(Path(args.output)), indent=2))
     elif args.command == "train":
         from playground.nubzuki.runner import NubzukiStandingRunner
         args.num_timesteps = args.num_timesteps or (1024 if args.preset == "smoke" else 150_000_000)

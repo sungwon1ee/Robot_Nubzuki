@@ -34,15 +34,15 @@ NETWORK_CONFIG = {
 }
 
 
-def load_mac_profile(path: str | Path) -> dict:
+def load_device_profile(path: str | Path) -> dict:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(
-            f"Mac profile not found: {path}. Run `nubzuki-standing benchmark-mac`."
+            f"Device profile not found: {path}. Run `nubzuki-standing benchmark`."
         )
     profile = json.loads(path.read_text(encoding="utf-8"))
-    if profile.get("backend") != "cpu" or int(profile.get("num_envs", 0)) <= 0:
-        raise ValueError(f"Invalid Mac CPU profile: {path}")
+    if int(profile.get("num_envs", 0)) <= 0:
+        raise ValueError(f"Invalid device profile: {path}")
     return profile
 
 
@@ -68,6 +68,7 @@ def training_config(
     profile_path: Path,
     checkpoint_every: int = DEFAULT_CHECKPOINT_EVERY,
     num_eval_envs: int | None = None,
+    num_envs: int | None = None,
 ) -> dict:
     config = dict(UPSTREAM_PPO)
     config["num_timesteps"] = int(num_timesteps)
@@ -76,18 +77,28 @@ def training_config(
         if int(num_eval_envs) <= 0:
             raise ValueError("--num-eval-envs must be positive")
         config["num_eval_envs"] = int(num_eval_envs)
-    if preset == "official":
-        return config
-    if preset == "macbook":
-        config["num_envs"] = int(load_mac_profile(profile_path)["num_envs"])
-        return config
-    if preset == "smoke":
+    if preset in ("profile", "macbook"):
+        config["num_envs"] = int(load_device_profile(profile_path)["num_envs"])
+    elif preset == "smoke":
         config.update(
             num_timesteps=int(num_timesteps), num_envs=64, episode_length=128,
             unroll_length=16, batch_size=16, num_minibatches=4,
             num_updates_per_batch=1, num_evals=1,
         )
         config.pop("num_eval_envs", None)
-        return config
-    raise ValueError(f"Unknown training preset: {preset}")
+    elif preset != "official":
+        raise ValueError(f"Unknown training preset: {preset}")
+
+    if num_envs is not None:
+        config["num_envs"] = int(num_envs)
+
+    # Brax collects batch_size * num_minibatches transitions per training step
+    # and splits them across num_envs, so the split has to come out whole.
+    per_step = config["batch_size"] * config["num_minibatches"]
+    if per_step % config["num_envs"] or per_step < config["num_envs"]:
+        raise ValueError(
+            f"num_envs={config['num_envs']} does not divide "
+            f"batch_size * num_minibatches = {per_step}; Brax requires that."
+        )
+    return config
 
