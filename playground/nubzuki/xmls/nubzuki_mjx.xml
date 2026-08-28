@@ -1,0 +1,193 @@
+<mujoco model="nubzuki_mjx">
+  <compiler angle="radian" autolimits="true" balanceinertia="true"/>
+  <option timestep="0.002" iterations="4" ls_iterations="4">
+    <flag eulerdamp="disable"/>
+  </option>
+
+  <default>
+    <default class="nubzuki">
+      <joint frictionloss="0.1" armature="0.005"/>
+      <geom friction="1 0.005 0.0001" rgba=".8 .2 .2 .3"/>
+    </default>
+    <default class="sts3215">
+      <joint damping="0.56" frictionloss="0.068" armature="0.027"/>
+      <position kp="13.37" kv="0" forcerange="-3.23 3.23"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base" pos="0 0 0.205" childclass="nubzuki">
+      <freejoint name="floating_base"/>
+      <body name="trunk">
+        <inertial pos="-0.028668113 -0.000057115 0.050866204" mass="1.006"
+                  fullinertia="0.002751293 0.003694551 0.003894216 -0.000007306 0.000537228 0.000001921"/>
+        <geom name="trunk_collision" type="box"
+              pos="-0.0059 0 0.040" size="0.104 0.098 0.075"
+              contype="2" conaffinity="28"/>
+        <site name="imu" pos="-0.05 0 0.05"/>
+
+        <body name="left_hip_yaw_link" pos="-0.019 0.035 0.048440939">
+          <joint name="left_hip_yaw" type="hinge" axis="0 0 -1"
+                 range="-0.3490658504 0.3490658504" class="sts3215"/>
+          <inertial pos="0.005494236 0 -0.019285129" mass="0.0193"
+                    fullinertia="0.000005379 0.000011693 0.000007883 0 0.000001201 0"/>
+          <geom name="left_hip_yaw_collision" type="box"
+                pos="0.004 0 -0.0235" size="0.028 0.020 0.025"
+                contype="0" conaffinity="1"/>
+          <body name="left_hip_roll_link" pos="0.02725 0 -0.030609661">
+            <joint name="left_hip_roll" type="hinge" axis="-1 0 0"
+                   range="-0.1745329252 0.3490658504" class="sts3215"/>
+            <inertial pos="-0.004783426 0.000521080 -0.011972130" mass="0.135"
+                      fullinertia="0.000044862 0.000120261 0.000106315 0.000001573 0.000006579 -0.000000623"/>
+            <geom name="left_hip_roll_collision" type="box"
+                  pos="-0.0053 0 -0.0127" size="0.043 0.020 0.023"
+                  contype="0" conaffinity="1"/>
+            <body name="left_hip_pitch_link" pos="-0.027153102 0.017150027 -0.025000339">
+              <joint name="left_hip_pitch" type="hinge" axis="0 -1 0"
+                     range="-0.3490658504 0.3490658504" class="sts3215"/>
+              <inertial pos="0.000001204 -0.016201439 -0.048860006" mass="0.0775"
+                        fullinertia="0.000072796 0.000062727 0.000021265 0 0 -0.000000345"/>
+              <geom name="left_hip_pitch_collision" type="box"
+                    pos="0 -0.016075 -0.03888" size="0.01535 0.022425 0.04988"
+                    contype="0" conaffinity="1"/>
+              <body name="left_knee_link" pos="0 0.00025 -0.07865">
+                <joint name="left_knee" type="hinge" axis="0 -1 0"
+                       range="-0.7853981634 0" class="sts3215"/>
+                <inertial pos="0.000272761 -0.015322589 -0.042877828" mass="0.128"
+                          fullinertia="0.000135073 0.000116238 0.000059553 0.000000299 -0.000001519 -0.000001952"/>
+                <geom name="left_knee_collision" type="capsule"
+                      fromto="0 -0.011 -0.015 0 -0.011 -0.065" size="0.025"
+                      contype="4" conaffinity="19"/>
+                <body name="left_foot_link" pos="0 0.0001 -0.07865">
+                  <joint name="left_ankle" type="hinge" axis="0 -1 0"
+                         range="-0.5235987756 0.5235987756" class="sts3215"/>
+                  <inertial pos="0.010202836 -0.016330062 -0.021841923" mass="0.076"
+                            fullinertia="0.000024528 0.000062144 0.000068036 -0.000000193 0.000003116 0.000000495"/>
+                  <geom name="left_foot_collision" type="box"
+                        pos="0.0124 -0.0163 -0.0358" size="0.052 0.0235 0.003"
+                        contype="16" conaffinity="7"/>
+                  <site name="left_foot" pos="0.0124 -0.0163 -0.0388"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+
+        <body name="right_hip_yaw_link" pos="-0.019 -0.035 0.048440939">
+          <joint name="right_hip_yaw" type="hinge" axis="0 0 -1"
+                 range="-0.3490658504 0.3490658504" class="sts3215"/>
+          <inertial pos="0.005494261 0 -0.019285140" mass="0.0193"
+                    fullinertia="0.000005379 0.000011693 0.000007883 0 0.000001201 0"/>
+          <geom name="right_hip_yaw_collision" type="box"
+                pos="0.004 0 -0.0235" size="0.028 0.020 0.025"
+                contype="0" conaffinity="1"/>
+          <body name="right_hip_roll_link" pos="0.02725 0 -0.030609661">
+            <joint name="right_hip_roll" type="hinge" axis="1 0 0"
+                   range="-0.1745329252 0.3490658504" class="sts3215"/>
+            <inertial pos="-0.004783426 -0.000521099 -0.011972131" mass="0.135"
+                      fullinertia="0.000044862 0.000120261 0.000106315 -0.000001573 0.000006579 0.000000623"/>
+            <geom name="right_hip_roll_collision" type="box"
+                  pos="-0.0053 0 -0.0127" size="0.043 0.020 0.023"
+                  contype="0" conaffinity="1"/>
+            <body name="right_hip_pitch_link" pos="-0.027153100 -0.017150025 -0.025000339">
+              <joint name="right_hip_pitch" type="hinge" axis="0 -1 0"
+                     range="-0.3490658504 0.3490658504" class="sts3215"/>
+              <inertial pos="0.000001340 0.014045341 -0.050522638" mass="0.0775"
+                        fullinertia="0.000072117 0.000063964 0.000019348 0 0 0.000003276"/>
+              <geom name="right_hip_pitch_collision" type="box"
+                    pos="0 0.016075 -0.03888" size="0.01535 0.022425 0.04988"
+                    contype="0" conaffinity="1"/>
+              <body name="right_knee_link" pos="0 -0.00025 -0.07865">
+                <joint name="right_knee" type="hinge" axis="0 -1 0"
+                       range="-0.7853981634 0" class="sts3215"/>
+                <inertial pos="0.000272765 0.015322595 -0.042877927" mass="0.128"
+                          fullinertia="0.000135074 0.000116239 0.000059553 -0.000000299 -0.000001519 0.000001953"/>
+                <geom name="right_knee_collision" type="capsule"
+                      fromto="0 0.011 -0.015 0 0.011 -0.065" size="0.025"
+                      contype="4" conaffinity="19"/>
+                <body name="right_foot_link" pos="0 -0.0001 -0.07865">
+                  <joint name="right_ankle" type="hinge" axis="0 -1 0"
+                         range="-0.5235987756 0.5235987756" class="sts3215"/>
+                  <inertial pos="0.010202834 0.016330062 -0.021841918" mass="0.076"
+                            fullinertia="0.000024528 0.000062144 0.000068036 0.000000193 0.000003116 -0.000000495"/>
+                  <geom name="right_foot_collision" type="box"
+                        pos="0.0124 0.0163 -0.0358" size="0.052 0.0235 0.003"
+                        contype="16" conaffinity="7"/>
+                  <site name="right_foot" pos="0.0124 0.0163 -0.0388"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+
+        <body name="neck_pitch_link" pos="0.001 0.01665 0.090000939">
+          <joint name="neck_pitch" type="hinge" axis="0 1 0"
+                 range="-0.3490658504 0.3490658504" class="sts3215"/>
+          <inertial pos="-0.000001451 -0.015262563 0.041314864" mass="0.0682"
+                    fullinertia="0.000050093 0.000040868 0.000018902 0 0 0.000001426"/>
+          <geom name="neck_pitch_collision" type="box"
+                pos="0 -0.0160 0.0326" size="0.014 0.021 0.042"
+                contype="0" conaffinity="1"/>
+          <body name="head_pitch_link" pos="0 0 0.066">
+            <joint name="head_pitch" type="hinge" axis="0 1 0"
+                   range="-0.3490658504 0.2617993878" class="sts3215"/>
+            <inertial pos="-0.003394613 -0.015619216 0.022855421" mass="0.015"
+                      fullinertia="0.000009922 0.000008466 0.000003582 -0.000000040 0.000000691 0.000000286"/>
+            <geom name="head_pitch_collision" type="box"
+                  pos="-0.005 -0.0160 0.025" size="0.015 0.021 0.034"
+                  contype="0" conaffinity="1"/>
+            <body name="head_yaw_link" pos="0 -0.01655 0.05245">
+              <joint name="head_yaw" type="hinge" axis="0 0 1"
+                     range="-0.3490658504 0.3490658504" class="sts3215"/>
+              <inertial pos="0.010874899 0.000001097 -0.017252789" mass="0.074"
+                        fullinertia="0.000022571 0.000068161 0.000068094 0 -0.000004369 0"/>
+              <geom name="head_yaw_collision" type="box"
+                    pos="-0.003 0 -0.0156" size="0.042 0.038 0.020"
+                    contype="0" conaffinity="1"/>
+              <body name="head_roll_link" pos="-0.047 0 -0.0146">
+                <joint name="head_roll" type="hinge" axis="-1 0 0"
+                       range="-0.2094395102 0.2094395102" class="sts3215"/>
+                <inertial pos="0.096074233 -0.001310789 0.048808000" mass="0.831"
+                          fullinertia="0.009768271 0.006244714 0.011096110 0.000116288 -0.000265823 -0.000023347"/>
+                <geom name="head_collision" type="sphere"
+                      pos="0.079 0 0.041" size="0.120"
+                      contype="8" conaffinity="2"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <sensor>
+    <gyro site="imu" name="gyro"/>
+    <velocimeter site="imu" name="local_linvel"/>
+    <accelerometer site="imu" name="accelerometer"/>
+    <framezaxis objtype="site" objname="imu" name="upvector"/>
+    <framelinvel objtype="site" objname="imu" name="global_linvel"/>
+    <frameangvel objtype="site" objname="imu" name="global_angvel"/>
+    <framelinvel objtype="site" objname="right_foot" name="right_foot_global_linvel"/>
+    <framelinvel objtype="site" objname="left_foot" name="left_foot_global_linvel"/>
+    <framepos objtype="site" objname="left_foot" name="left_foot_pos"/>
+    <framepos objtype="site" objname="right_foot" name="right_foot_pos"/>
+  </sensor>
+
+  <actuator>
+    <position name="left_hip_yaw" joint="left_hip_yaw" class="sts3215"/>
+    <position name="left_hip_roll" joint="left_hip_roll" class="sts3215"/>
+    <position name="left_hip_pitch" joint="left_hip_pitch" class="sts3215"/>
+    <position name="left_knee" joint="left_knee" class="sts3215"/>
+    <position name="left_ankle" joint="left_ankle" class="sts3215"/>
+    <position name="neck_pitch" joint="neck_pitch" class="sts3215"/>
+    <position name="head_pitch" joint="head_pitch" class="sts3215"/>
+    <position name="head_yaw" joint="head_yaw" class="sts3215"/>
+    <position name="head_roll" joint="head_roll" class="sts3215"/>
+    <position name="right_hip_yaw" joint="right_hip_yaw" class="sts3215"/>
+    <position name="right_hip_roll" joint="right_hip_roll" class="sts3215"/>
+    <position name="right_hip_pitch" joint="right_hip_pitch" class="sts3215"/>
+    <position name="right_knee" joint="right_knee" class="sts3215"/>
+    <position name="right_ankle" joint="right_ankle" class="sts3215"/>
+  </actuator>
+</mujoco>
+

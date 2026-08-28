@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robot-nubzuki-standing"
+version = "0.1.0"
+description = "No-Placo Open Duck standing policy adapted to Nubzuki"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "numpy==1.26.4",
+]
+
+[project.optional-dependencies]
+mac-train = [
+  "brax==0.12.3",
+  "flax==0.11.1",
+  "jax==0.6.2",
+  "jaxlib==0.6.2",
+  "matplotlib>=3.10.0",
+  "mujoco==3.3.7",
+  "mujoco-mjx==3.3.7",
+  "playground==0.0.5",
+  "onnxruntime>=1.20.1",
+  "orbax-checkpoint>=0.11.17",
+  "pygame==2.6.1",
+  "tensorboardX>=2.6.2.2",
+  "tensorflow>=2.18.0",
+  "tf2onnx>=1.17.0",
+]
+robot = [
+  "adafruit-circuitpython-bno055==5.4.13",
+  "onnxruntime==1.18.1",
+  "pygame==2.6.0",
+  "rustypot==0.1.0",
+]
+test = [
+  "pytest>=8.3",
+]
+
+[project.scripts]
+nubzuki-standing = "playground.nubzuki.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["playground*"]
+
+[tool.setuptools.package-data]
+"playground.nubzuki" = ["xmls/*.xml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

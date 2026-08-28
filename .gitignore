@@ -1,0 +1,14 @@
+.DS_Store
+.venv/
+.tmp/
+.local/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+runs/
+checkpoints/
+config/head_dynamics.json
+*.onnx
+*.pkl
+*.npz

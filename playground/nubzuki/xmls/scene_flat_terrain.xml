@@ -1,0 +1,35 @@
+<mujoco model="nubzuki_mjx_scene">
+  <include file="nubzuki_mjx.xml"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <global azimuth="145" elevation="-15"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="1 1 1" rgb2="1 1 1"
+             width="256" height="256"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge"
+             rgb1=".8 .8 .8" rgb2=".6 .6 .6" markrgb="0 0 0"
+             width="128" height="128"/>
+    <material name="groundplane" texture="groundplane" texuniform="true"
+              texrepeat="5 5" reflectance="0"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" type="plane" size="0 0 0.01" material="groundplane"
+          contype="1" conaffinity="0" priority="1" friction="0.8" condim="3"/>
+  </worldbody>
+
+  <keyframe>
+    <key name="home"
+         qpos="0 0 0.205 1 0 0 0
+               0 0 0 0 0
+               0 0 0 0 0
+               0 0 0 0"
+         ctrl="0 0 0 0 0
+               0 0 0 0 0
+               0 0 0 0"/>
+  </keyframe>
+</mujoco>
+
