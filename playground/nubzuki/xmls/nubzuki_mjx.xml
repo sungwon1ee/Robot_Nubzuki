@@ -35,7 +35,7 @@
                 pos="0.004 0 -0.0235" size="0.028 0.020 0.025"
                 contype="0" conaffinity="1"/>
           <body name="left_hip_roll_link" pos="0.02725 0 -0.030609661">
-            <joint name="left_hip_roll" type="hinge" axis="-1 0 0"
+            <joint name="left_hip_roll" type="hinge" axis="1 0 0"
                    range="-0.1745329252 0.3490658504" class="sts3215"/>
             <inertial pos="-0.004783426 0.000521080 -0.011972130" mass="0.135"
                       fullinertia="0.000044862 0.000120261 0.000106315 0.000001573 0.000006579 -0.000000623"/>
@@ -82,7 +82,7 @@
                 pos="0.004 0 -0.0235" size="0.028 0.020 0.025"
                 contype="0" conaffinity="1"/>
           <body name="right_hip_roll_link" pos="0.02725 0 -0.030609661">
-            <joint name="right_hip_roll" type="hinge" axis="1 0 0"
+            <joint name="right_hip_roll" type="hinge" axis="-1 0 0"
                    range="-0.1745329252 0.3490658504" class="sts3215"/>
             <inertial pos="-0.004783426 -0.000521099 -0.011972131" mass="0.135"
                       fullinertia="0.000044862 0.000120261 0.000106315 -0.000001573 0.000006579 0.000000623"/>

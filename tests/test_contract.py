@@ -11,9 +11,15 @@ from playground.nubzuki.cli import build_parser
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
 from playground.nubzuki.policy import ObservationBuilder
 from playground.nubzuki.ppo_config import training_config
+from playground.nubzuki.standing import default_config
 
 
 class StandingContractTests(unittest.TestCase):
+    def test_v3_uses_physical_hip_roll_axes_and_stronger_pushes(self):
+        env_config = default_config()
+        self.assertEqual(list(env_config.push_config.interval_range), [4.0, 8.0])
+        self.assertEqual(list(env_config.push_config.magnitude_range), [0.1, 1.25])
+
     def test_robot_phone_control_defaults_to_port_8766(self):
         args = build_parser().parse_args(
             ["robot", "--policy", "policy.onnx", "--control", "phone"]

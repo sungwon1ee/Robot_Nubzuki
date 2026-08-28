@@ -80,8 +80,8 @@ def default_config() -> config_dict.ConfigDict:
         ),
         push_config=config_dict.create(
             enable=True,
-            interval_range=[5.0, 10.0],
-            magnitude_range=[0.1, 1.0],
+            interval_range=[4.0, 8.0],
+            magnitude_range=[0.1, 1.25],
         ),
         neck_pitch_range=list(head_ranges["neck_pitch"]),
         head_pitch_range=list(head_ranges["head_pitch"]),
