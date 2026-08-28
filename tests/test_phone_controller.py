@@ -103,7 +103,7 @@ class PhoneControllerTests(unittest.TestCase):
         axes, _, _ = self.controller.read()
         targets = axes_to_head_targets(axes, self.calibration, profile)
         self.assertAlmostEqual(targets["head_yaw"], self.calibration.limits_rad("head_yaw")[1])
-        self.assertAlmostEqual(targets["head_pitch"], self.calibration.limits_rad("head_pitch")[0])
+        self.assertAlmostEqual(targets["head_pitch"], self.calibration.limits_rad("head_pitch")[1])
         self.assertEqual(targets["neck_pitch"], 0.0)
         self.assertEqual(set(targets), set(HEAD_JOINTS))
 

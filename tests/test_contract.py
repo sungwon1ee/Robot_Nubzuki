@@ -65,7 +65,7 @@ class StandingContractTests(unittest.TestCase):
         axes = {"left_x": 1.0, "left_y": -1.0, "right_x": 1.0, "right_y": 0.0}
         targets = axes_to_head_targets(axes, self.calibration, self.profile)
         self.assertAlmostEqual(targets["head_yaw"], self.calibration.limits_rad("head_yaw")[1])
-        self.assertAlmostEqual(targets["head_pitch"], self.calibration.limits_rad("head_pitch")[0])
+        self.assertAlmostEqual(targets["head_pitch"], self.calibration.limits_rad("head_pitch")[1])
         self.assertEqual(targets["neck_pitch"], 0.0)
         self.assertEqual(apply_deadzone(0.05, 0.1), 0.0)
 
@@ -88,4 +88,3 @@ class StandingContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

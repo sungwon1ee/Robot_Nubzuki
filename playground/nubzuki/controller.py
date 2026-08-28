@@ -30,7 +30,7 @@ def axes_to_head_targets(
     }
     return {
         "neck_pitch": scale_axis(values["right_y"], calibration.limits_rad("neck_pitch")),
-        "head_pitch": scale_axis(values["left_y"], calibration.limits_rad("head_pitch")),
+        "head_pitch": scale_axis(-values["left_y"], calibration.limits_rad("head_pitch")),
         "head_yaw": scale_axis(values["left_x"], calibration.limits_rad("head_yaw")),
         "head_roll": scale_axis(values["right_x"], calibration.limits_rad("head_roll")),
     }
