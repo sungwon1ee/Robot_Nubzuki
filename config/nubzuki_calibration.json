@@ -55,7 +55,7 @@
     "left_ankle":     {"servo_id": 24, "direction": -1, "offset_deg": 0.0,   "limits_deg": [-30.0, 30.0], "park_deg": -4.53},
     "neck_pitch":     {"servo_id": 30, "direction": -1, "offset_deg": 0.0,   "limits_deg": [-20.0, 20.0], "park_deg": -11.91},
     "head_pitch":     {"servo_id": 31, "direction": -1, "offset_deg": 0.0,   "limits_deg": [-20.0, 15.0], "park_deg": -8.13},
-    "head_yaw":       {"servo_id": 32, "direction": 1,  "offset_deg": -6.55, "limits_deg": [-20.0, 20.0], "park_deg": 0.0},
+    "head_yaw":       {"servo_id": 32, "direction": 1,  "offset_deg": -6.55, "limits_deg": [-35.0, 35.0], "park_deg": 0.0},
     "head_roll":      {"servo_id": 33, "direction": 1,  "offset_deg": -3.03, "limits_deg": [-12.0, 12.0], "park_deg": 0.0},
     "right_hip_yaw":  {"servo_id": 10, "direction": -1, "offset_deg": -2.0,  "limits_deg": [-20.0, 20.0], "park_deg": 0.24},
     "right_hip_roll": {"servo_id": 11, "direction": 1,  "offset_deg": 4.88,  "limits_deg": [-10.0, 20.0], "park_deg": 7.0},
