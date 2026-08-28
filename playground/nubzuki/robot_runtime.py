@@ -18,7 +18,9 @@ from playground.nubzuki.sensors import FootContacts, ImuSensor
 def _make_controller(control: str, host: str, web_port: int):
     if control == "phone":
         from playground.nubzuki.phone_controller import PhoneController
-        controller = PhoneController(host=host, port=web_port)
+        controller = PhoneController(
+            host=host, port=web_port, target_label="실물 로봇 제어"
+        )
         print(f"\nOpen this on your phone, on the same network:\n    {controller.url}\n")
         return controller
     return XboxController()

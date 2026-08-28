@@ -126,7 +126,7 @@ async function send(){
     status.textContent=state.mode==='head'?'연결됨 · HEAD 모드':'연결됨 · WALK 모드 (standing 이동 비활성)';
   }catch(error){
     failures++;
-    if(failures>2){dot.classList.remove('live');status.textContent='연결 끊김 — 시뮬레이터가 실행 중인지 확인'}
+    if(failures>2){dot.classList.remove('live');status.textContent='연결 끊김 — __TARGET_LABEL__가 실행 중인지 확인'}
   }
 }
 setInterval(send,50);

@@ -35,7 +35,8 @@ def local_address() -> str:
 
 
 class PhoneController:
-    def __init__(self, host: str = "0.0.0.0", port: int = 8765, timeout_s: float = 0.5):
+    def __init__(self, host: str = "0.0.0.0", port: int = 8765, timeout_s: float = 0.5,
+                 target_label: str = "시뮬레이터"):
         self.timeout_s = float(timeout_s)
         self._lock = threading.Lock()
         self._axes = {name: 0.0 for name in AXES}
@@ -44,6 +45,7 @@ class PhoneController:
         self.control_mode = "head"
         self._last_input = 0.0
         self._connected = False
+        self.target_label = str(target_label)
         controller = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -61,7 +63,8 @@ class PhoneController:
 
             def do_GET(self):
                 if self.path.split("?")[0] in ("/", "/index.html"):
-                    self._send(200, CONTROL_PAGE.encode("utf-8"), "text/html; charset=utf-8")
+                    page = CONTROL_PAGE.replace("__TARGET_LABEL__", controller.target_label)
+                    self._send(200, page.encode("utf-8"), "text/html; charset=utf-8")
                     return
                 self._send(404)
 

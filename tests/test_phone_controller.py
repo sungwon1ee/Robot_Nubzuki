@@ -38,6 +38,19 @@ class PhoneControllerTests(unittest.TestCase):
         self.assertIn("border-radius:50%", page)
         self.assertIn("MODE · HEAD", page)
         self.assertIn("MODE · WALK", page)
+        self.assertIn("시뮬레이터가 실행 중인지 확인", page)
+        self.assertNotIn("__TARGET_LABEL__", page)
+
+    def test_page_names_the_physical_robot_when_requested(self):
+        self.controller.close()
+        self.controller = PhoneController(
+            host="127.0.0.1", port=0, timeout_s=0.3,
+            target_label="실물 로봇 제어",
+        )
+        self.url = f"http://127.0.0.1:{self.controller.server.server_address[1]}"
+        with urllib.request.urlopen(self.url, timeout=2) as response:
+            page = response.read().decode()
+        self.assertIn("실물 로봇 제어가 실행 중인지 확인", page)
 
     def test_no_input_is_not_fresh(self):
         self.assertFalse(self.controller.fresh())

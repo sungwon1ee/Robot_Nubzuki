@@ -85,7 +85,9 @@ def identify_head(
         raise RuntimeError("Identification cancelled")
     if control == "phone":
         from playground.nubzuki.phone_controller import PhoneController
-        controller = PhoneController(host=host, port=web_port)
+        controller = PhoneController(
+            host=host, port=web_port, target_label="실물 로봇 머리 측정"
+        )
         print(f"Open this on your phone, on the same network:\n    {controller.url}")
         print("Waiting for the phone controller to connect...")
         while not controller.fresh():
