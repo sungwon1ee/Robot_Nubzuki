@@ -18,7 +18,12 @@ class StandingContractTests(unittest.TestCase):
     def test_v3_uses_physical_hip_roll_axes_and_random_force_pushes(self):
         env_config = default_config()
         self.assertEqual(list(env_config.push_config.interval_range), [0.5, 4.0])
-        self.assertEqual(list(env_config.push_config.force_range_n), [3.0, 20.0])
+        self.assertEqual(
+            list(env_config.push_config.torso_force_range_n), [3.0, 20.0]
+        )
+        self.assertEqual(
+            list(env_config.push_config.head_force_range_n), [1.0, 6.0]
+        )
         self.assertEqual(
             list(env_config.push_config.duration_range_s), [0.08, 0.20]
         )
