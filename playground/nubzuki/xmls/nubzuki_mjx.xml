@@ -21,8 +21,19 @@
       <body name="trunk">
         <inertial pos="-0.028668113 -0.000057115 0.050866204" mass="1.006"
                   fullinertia="0.002751293 0.003694551 0.003894216 -0.000007306 0.000537228 0.000001921"/>
+        <!--
+          Two boxes follow the STL silhouette more closely than its old full
+          bounding box.  The large lower/front shell ends below the neck; the
+          smaller rear box follows the measured battery-shell AABB.  In
+          particular, this leaves the same neutral head clearance as the CAD
+          model instead of filling the empty corner with collision volume.
+        -->
         <geom name="trunk_collision" type="box"
-              pos="-0.0059 0 0.040" size="0.104 0.098 0.075"
+              pos="0.012 0 0.035" size="0.085 0.095 0.075"
+              contype="2" conaffinity="28"/>
+        <geom name="trunk_rear_collision" type="box"
+              pos="-0.07947 -0.000025 0.052885"
+              size="0.02727 0.044755 0.057815"
               contype="2" conaffinity="28"/>
         <site name="imu" pos="-0.05 0 0.05"/>
 
@@ -57,7 +68,7 @@
                           fullinertia="0.000135073 0.000116238 0.000059553 0.000000299 -0.000001519 -0.000001952"/>
                 <geom name="left_knee_collision" type="capsule"
                       fromto="0 -0.011 -0.015 0 -0.011 -0.065" size="0.025"
-                      contype="4" conaffinity="19"/>
+                      contype="4" conaffinity="23"/>
                 <body name="left_foot_link" pos="0 0.0001 -0.07865">
                   <joint name="left_ankle" type="hinge" axis="0 -1 0"
                          range="-0.5235987756 0.5235987756" class="sts3215"/>
@@ -65,7 +76,7 @@
                             fullinertia="0.000024528 0.000062144 0.000068036 -0.000000193 0.000003116 0.000000495"/>
                   <geom name="left_foot_collision" type="box"
                         pos="0.0124 -0.0163 -0.0358" size="0.052 0.0235 0.003"
-                        contype="16" conaffinity="7"/>
+                        contype="16" conaffinity="23"/>
                   <site name="left_foot" pos="0.0124 -0.0163 -0.0388"/>
                 </body>
               </body>
@@ -104,7 +115,7 @@
                           fullinertia="0.000135074 0.000116239 0.000059553 -0.000000299 -0.000001519 0.000001953"/>
                 <geom name="right_knee_collision" type="capsule"
                       fromto="0 0.011 -0.015 0 0.011 -0.065" size="0.025"
-                      contype="4" conaffinity="19"/>
+                      contype="4" conaffinity="23"/>
                 <body name="right_foot_link" pos="0 -0.0001 -0.07865">
                   <joint name="right_ankle" type="hinge" axis="0 -1 0"
                          range="-0.5235987756 0.5235987756" class="sts3215"/>
@@ -112,7 +123,7 @@
                             fullinertia="0.000024528 0.000062144 0.000068036 0.000000193 0.000003116 -0.000000495"/>
                   <geom name="right_foot_collision" type="box"
                         pos="0.0124 0.0163 -0.0358" size="0.052 0.0235 0.003"
-                        contype="16" conaffinity="7"/>
+                        contype="16" conaffinity="23"/>
                   <site name="right_foot" pos="0.0124 0.0163 -0.0388"/>
                 </body>
               </body>
@@ -149,8 +160,15 @@
                        range="-0.2094395102 0.2094395102" class="sts3215"/>
                 <inertial pos="0.096074233 -0.001310789 0.048808000" mass="0.831"
                           fullinertia="0.009768271 0.006244714 0.011096110 0.000116288 -0.000265823 -0.000023347"/>
-                <geom name="head_collision" type="sphere"
-                      pos="0.079 0 0.041" size="0.120"
+                <!--
+                  A wide capsule follows the STL head envelope while using a
+                  collision pair implemented by MJX.  Its total half-width is
+                  0.210 m and its lower edge retains the CAD model's neutral
+                  clearance above the trunk.
+                -->
+                <geom name="head_collision" type="capsule"
+                      fromto="0.079 -0.105 0.041 0.079 0.105 0.041"
+                      size="0.105"
                       contype="8" conaffinity="2"/>
               </body>
             </body>

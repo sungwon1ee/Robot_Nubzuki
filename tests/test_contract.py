@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import mujoco
 import numpy as np
 
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
@@ -30,6 +31,85 @@ class RecordingHardware:
 
 
 class StandingContractTests(unittest.TestCase):
+    def test_simple_home_pose_has_no_self_collision(self):
+        model_path = Path(
+            "playground/nubzuki/xmls/scene_flat_terrain.xml"
+        ).resolve()
+        model = mujoco.MjModel.from_xml_path(str(model_path))
+        data = mujoco.MjData(model)
+        mujoco.mj_resetDataKeyframe(model, data, model.keyframe("home").id)
+        mujoco.mj_forward(model, data)
+
+        contacts = {
+            frozenset(
+                (
+                    mujoco.mj_id2name(
+                        model, mujoco.mjtObj.mjOBJ_GEOM, int(contact.geom1)
+                    ),
+                    mujoco.mj_id2name(
+                        model, mujoco.mjtObj.mjOBJ_GEOM, int(contact.geom2)
+                    ),
+                )
+            )
+            for contact in data.contact
+        }
+        self.assertNotIn(
+            frozenset(("head_collision", "trunk_collision")), contacts
+        )
+        self.assertNotIn(
+            frozenset(("head_collision", "trunk_rear_collision")), contacts
+        )
+        self.assertEqual(data.ncon, 0)
+
+    def test_simple_collision_shell_tracks_the_cad_shape(self):
+        model_path = Path(
+            "playground/nubzuki/xmls/scene_flat_terrain.xml"
+        ).resolve()
+        model = mujoco.MjModel.from_xml_path(str(model_path))
+        trunk_id = model.geom("trunk_collision").id
+        battery_id = model.geom("trunk_rear_collision").id
+        self.assertAlmostEqual(float(model.geom_size[trunk_id, 2]), 0.075)
+        np.testing.assert_allclose(
+            model.geom_size[battery_id],
+            [0.02727, 0.044755, 0.057815],
+            atol=1e-12,
+        )
+        head_id = model.geom("head_collision").id
+        self.assertEqual(
+            int(model.geom_type[head_id]), int(mujoco.mjtGeom.mjGEOM_CAPSULE)
+        )
+        self.assertAlmostEqual(float(model.geom_size[head_id, 0]), 0.105)
+        self.assertAlmostEqual(float(model.geom_size[head_id, 1]), 0.105)
+
+    def test_left_and_right_knees_and_feet_can_self_collide(self):
+        model_path = Path(
+            "playground/nubzuki/xmls/scene_flat_terrain.xml"
+        ).resolve()
+        model = mujoco.MjModel.from_xml_path(str(model_path))
+
+        def compatible(first: str, second: str) -> bool:
+            first_id = model.geom(first).id
+            second_id = model.geom(second).id
+            return bool(
+                int(model.geom_contype[first_id])
+                & int(model.geom_conaffinity[second_id])
+                or int(model.geom_contype[second_id])
+                & int(model.geom_conaffinity[first_id])
+            )
+
+        self.assertTrue(
+            compatible("left_knee_collision", "right_knee_collision")
+        )
+        self.assertTrue(
+            compatible("left_foot_collision", "right_foot_collision")
+        )
+        self.assertTrue(
+            compatible("left_knee_collision", "right_foot_collision")
+        )
+        self.assertTrue(
+            compatible("right_knee_collision", "left_foot_collision")
+        )
+
     def test_v3_uses_physical_hip_roll_axes_and_random_force_pushes(self):
         env_config = default_config()
         self.assertEqual(list(env_config.push_config.interval_range), [4.0, 8.0])
