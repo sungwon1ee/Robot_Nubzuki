@@ -25,10 +25,11 @@ class StandingPolicy:
         self.metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         if require_deployable and self.metadata.get("deployable") is not True:
             raise RuntimeError("Smoke or unmarked policy cannot run on hardware")
+        policy_kind = self.metadata.get("policy", "standing")
         expected = {
             "observation_size": 87, "action_size": 14,
             "control_frequency_hz": 50, "calibration_sha256": calibration.sha256,
-            "model_semantics_version": 4,
+            "model_semantics_version": 5 if policy_kind == "walking" else 4,
         }
         for key, value in expected.items():
             if self.metadata.get(key) != value:

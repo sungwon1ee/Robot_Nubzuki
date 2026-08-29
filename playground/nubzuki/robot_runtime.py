@@ -8,7 +8,11 @@ from pathlib import Path
 import numpy as np
 
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
-from playground.nubzuki.controller import XboxController, axes_to_head_targets
+from playground.nubzuki.controller import (
+    XboxController,
+    axes_to_head_targets,
+    forward_velocity_command,
+)
 from playground.nubzuki.hardware import ServoHardware
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
 from playground.nubzuki.policy import ObservationBuilder, StandingPolicy
@@ -83,6 +87,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
     previous_targets = np.zeros(14)
     a_was_pressed = False
     dt = 1.0 / calibration.control_frequency_hz
+    gait_phase = 0.0
     try:
         hardware.disable_torque()
         hardware.preflight()
@@ -112,7 +117,8 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             # the head, and `PhoneController.read` already zeroes a stale sample
             # so the head recentres; the standing policy keeps the legs under
             # the robot. Raising here turned a Wi-Fi hiccup into a fall.
-            if controller.fresh():
+            input_fresh = controller.fresh()
+            if input_fresh:
                 if link_lost:
                     print("Controller link restored")
                     link_lost = False
@@ -122,15 +128,31 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                     "still running. Ctrl-C or B to park and stop."
                 )
                 link_lost = True
-            raw_targets = axes_to_head_targets(axes, calibration, profile)
+            mode = controller.mode()
+            head_axes = axes if mode == "head" else {name: 0.0 for name in axes}
+            raw_targets = axes_to_head_targets(head_axes, calibration, profile)
             head_targets = limiter.step(raw_targets)
-            command = np.asarray([0.0, 0.0, 0.0] + [head_targets[name] for name in HEAD_JOINTS])
+            forward = (
+                forward_velocity_command(axes, mode, policy.metadata)
+                if input_fresh else 0.0
+            )
+            if forward > 0.01:
+                frequency = float(policy.metadata.get("gait_frequency_hz", 2.0))
+                gait_phase = (
+                    gait_phase + 2.0 * np.pi * frequency * dt
+                ) % (2.0 * np.pi)
+            else:
+                gait_phase = 0.0
+            command = np.asarray(
+                [forward, 0.0, 0.0]
+                + [head_targets[name] for name in HEAD_JOINTS]
+            )
             imu_data = imu.read()
             qpos = hardware.read_positions()
             qvel = hardware.read_velocities()
             observation = builder.build(
                 imu_data["gyro"], imu_data["accelerometer"], command,
-                qpos, qvel, feet.read(),
+                qpos, qvel, feet.read(), gait_phase,
             )
             action = policy.infer(observation)
             builder.advance(action)

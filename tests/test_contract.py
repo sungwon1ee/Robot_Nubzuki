@@ -5,15 +5,21 @@ from pathlib import Path
 
 import mujoco
 import numpy as np
+import jax
 
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
-from playground.nubzuki.controller import apply_deadzone, axes_to_head_targets
+from playground.nubzuki.controller import (
+    apply_deadzone,
+    axes_to_head_targets,
+    forward_velocity_command,
+)
 from playground.nubzuki.cli import build_parser
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
 from playground.nubzuki.policy import ObservationBuilder
 from playground.nubzuki.ppo_config import training_config
 from playground.nubzuki.robot_runtime import PARK_SPEED_FRACTION, park
-from playground.nubzuki.standing import default_config
+from playground.nubzuki.standing import _cost_negative_hip_roll, default_config
+from playground.nubzuki.walking import Walking, default_config as walking_config
 
 
 class RecordingHardware:
@@ -31,10 +37,51 @@ class RecordingHardware:
 
 
 class StandingContractTests(unittest.TestCase):
+    def test_walking_keeps_abi_and_samples_only_forward_or_stop(self):
+        env = Walking(config=walking_config())
+        state = env.reset(np.array([0, 1], dtype=np.uint32))
+        self.assertEqual(state.obs["state"].shape, (87,))
+        commands = np.asarray(
+            jax.vmap(env.sample_command)(jax.random.split(jax.random.PRNGKey(7), 256))
+        )
+        self.assertTrue(np.all(commands[:, 0] >= 0.0))
+        np.testing.assert_allclose(commands[:, 1:3], 0.0)
+        self.assertGreater(np.mean(commands[:, 0] == 0.0), 0.1)
+
+    def test_walk_mode_maps_only_forward_stick(self):
+        metadata = {
+            "policy": "walking",
+            "forward_velocity_range_m_s": [0.03, 0.15],
+        }
+        self.assertAlmostEqual(
+            forward_velocity_command({"left_y": 1.0}, "walk", metadata),
+            0.15,
+        )
+        self.assertEqual(
+            forward_velocity_command({"left_y": -1.0}, "walk", metadata),
+            0.0,
+        )
+        self.assertEqual(
+            forward_velocity_command({"left_y": 1.0}, "head", metadata),
+            0.0,
+        )
+
     def test_zero_command_and_head_tracking_are_prioritized(self):
         config = default_config()
         self.assertEqual(config.zero_command_probability, 0.20)
         self.assertEqual(config.reward_config.scales.head_pos, -5.0)
+        self.assertEqual(config.reward_config.scales.negative_hip_roll, -2.0)
+
+    def test_only_negative_hip_roll_is_penalized(self):
+        outward = np.zeros(14)
+        outward[[1, 10]] = 0.2
+        self.assertEqual(float(_cost_negative_hip_roll(outward)), 0.0)
+
+        inward = np.zeros(14)
+        inward[[1, 10]] = [-0.2, -0.1]
+        self.assertAlmostEqual(
+            float(_cost_negative_hip_roll(inward)), 0.05, places=6
+        )
 
     def test_simple_home_pose_has_no_self_collision(self):
         model_path = Path(
@@ -115,22 +162,16 @@ class StandingContractTests(unittest.TestCase):
             compatible("right_knee_collision", "left_foot_collision")
         )
 
-    def test_v3_uses_physical_hip_roll_axes_and_random_force_pushes(self):
+    def test_v4_uses_open_duck_horizontal_velocity_pushes(self):
         env_config = default_config()
-        self.assertEqual(list(env_config.push_config.interval_range), [4.0, 8.0])
+        self.assertEqual(list(env_config.push_config.interval_range), [5.0, 10.0])
         self.assertEqual(
-            list(env_config.push_config.torso_force_range_n), [5.0, 15.0]
-        )
-        self.assertEqual(
-            list(env_config.push_config.head_force_range_n), [2.0, 5.0]
-        )
-        self.assertEqual(
-            list(env_config.push_config.duration_range_s), [0.12, 0.30]
+            list(env_config.push_config.magnitude_range_m_s), [0.1, 1.0]
         )
 
     def test_v4_policy_semantics_are_explicit(self):
         source = Path("playground/nubzuki/runner.py").read_text()
-        self.assertIn('"model_semantics_version": 4', source)
+        self.assertIn('5 if policy_kind == "walking" else 4', source)
         self.assertEqual(NubzukiCalibration().data["runtime"]["head_kp"], 24)
 
     def test_robot_phone_control_defaults_to_port_8766(self):

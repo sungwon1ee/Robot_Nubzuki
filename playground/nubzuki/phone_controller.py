@@ -109,12 +109,7 @@ class PhoneController:
                 # Hold no stale deflection: an unreachable phone recentres the head.
                 self._axes = {name: 0.0 for name in AXES}
                 self._a_pressed = False
-            axes = (
-                dict(self._axes)
-                if self.control_mode == "head"
-                else {name: 0.0 for name in AXES}
-            )
-            return axes, self._a_pressed, self._b_pressed
+            return dict(self._axes), self._a_pressed, self._b_pressed
 
     def fresh(self) -> bool:
         """True only while samples are actually arriving."""

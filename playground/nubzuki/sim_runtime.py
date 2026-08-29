@@ -11,7 +11,7 @@ import numpy as np
 
 from playground.nubzuki import constants
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
-from playground.nubzuki.controller import axes_to_head_targets
+from playground.nubzuki.controller import axes_to_head_targets, forward_velocity_command
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
 from playground.nubzuki.policy import ObservationBuilder, StandingPolicy
 
@@ -91,6 +91,7 @@ def run_simulation(
     limiter = HeadTrajectoryLimiter(profile)
     builder = ObservationBuilder()
     dt = 1.0 / calibration.control_frequency_hz
+    gait_phase = 0.0
     announced = False
     try:
         with mujoco.viewer.launch_passive(model, data) as viewer:
@@ -102,15 +103,27 @@ def run_simulation(
                 if not announced and controller.fresh():
                     print("Controller connected.")
                     announced = True
-                desired = axes_to_head_targets(axes, calibration, profile)
+                mode = controller.mode()
+                head_axes = axes if mode == "head" else {name: 0.0 for name in axes}
+                desired = axes_to_head_targets(head_axes, calibration, profile)
                 head = limiter.step(desired)
-                command = np.asarray([0.0, 0.0, 0.0] + [head[name] for name in HEAD_JOINTS])
+                forward = forward_velocity_command(axes, mode, policy.metadata)
+                if forward > 0.01:
+                    frequency = float(policy.metadata.get("gait_frequency_hz", 2.0))
+                    gait_phase = (
+                        gait_phase + 2.0 * np.pi * frequency * dt
+                    ) % (2.0 * np.pi)
+                else:
+                    gait_phase = 0.0
+                command = np.asarray(
+                    [forward, 0.0, 0.0] + [head[name] for name in HEAD_JOINTS]
+                )
                 qpos = np.asarray(data.qpos[qpos_addresses])
                 qvel = np.asarray(data.qvel[qvel_addresses])
                 obs = builder.build(
                     _sensor(model, data, constants.GYRO_SENSOR),
                     _sensor(model, data, constants.ACCELEROMETER_SENSOR),
-                    command, qpos, qvel, _contacts(model, data),
+                    command, qpos, qvel, _contacts(model, data), gait_phase,
                 )
                 action = policy.infer(obs)
                 builder.advance(action)

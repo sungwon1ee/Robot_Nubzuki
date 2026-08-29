@@ -28,6 +28,10 @@ def build_parser() -> argparse.ArgumentParser:
         benchmark.add_argument("--output", default=".local/mac_profile.json")
     train = sub.add_parser("train", help="start PPO only when explicitly invoked")
     train.add_argument(
+        "--env", choices=("standing", "walking"), default="standing",
+        help="train standing or the forward/stop walking task",
+    )
+    train.add_argument(
         "--preset", choices=("smoke", "profile", "macbook", "official"), default="profile",
         help="profile uses the benchmark result; macbook is an alias for it",
     )
@@ -36,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="override the preset's environment count",
     )
     train.add_argument("--num-timesteps", type=int, default=None)
-    train.add_argument("--output", default="runs/standing")
+    train.add_argument("--output", default=None)
     train.add_argument(
         "--device-profile", "--mac-profile", dest="mac_profile",
         default=".local/mac_profile.json",
@@ -109,6 +113,7 @@ def main() -> None:
     elif args.command == "train":
         from playground.nubzuki.runner import NubzukiStandingRunner
         args.num_timesteps = args.num_timesteps or (1024 if args.preset == "smoke" else 150_000_000)
+        args.output = args.output or f"runs/{args.env}"
         if args.fresh:
             args.restore = None
         NubzukiStandingRunner(args).train()

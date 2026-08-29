@@ -21,6 +21,17 @@ def scale_axis(value: float, limits: tuple[float, float]) -> float:
     return float(value) * (high if value >= 0 else abs(low))
 
 
+def forward_velocity_command(
+    axes: dict[str, float], mode: str, policy_metadata: dict
+) -> float:
+    """Map stick-up to forward velocity for the forward/stop walking policy."""
+    if mode != "walk" or policy_metadata.get("policy") != "walking":
+        return 0.0
+    limits = policy_metadata.get("forward_velocity_range_m_s", [0.03, 0.15])
+    stick = max(apply_deadzone(axes.get("left_y", 0.0), 0.1), 0.0)
+    return stick * float(limits[1])
+
+
 def axes_to_head_targets(
     axes: dict[str, float], calibration: NubzukiCalibration,
     profile: HeadDynamicsProfile,
@@ -74,8 +85,6 @@ class XboxController:
         if y_pressed and not self._y_was_pressed:
             self.control_mode = "walk" if self.control_mode == "head" else "head"
         self._y_was_pressed = y_pressed
-        if self.control_mode == "walk":
-            axes = {name: 0.0 for name in axes}
         return axes, a_pressed, b_pressed
 
     def mode(self) -> str:

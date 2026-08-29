@@ -166,6 +166,23 @@ Without that file `sim` still runs, on unmeasured defaults it announces at
 startup. Those defaults are marked as unmeasured and the physical robot refuses
 them.
 
+## Forward/stop walking
+
+The walking task preserves the 87/155 observation ABI and activates the final
+gait-phase sine/cosine pair. It samples forward commands from 0.03 to 0.15 m/s,
+uses 20 percent all-zero commands, and keeps the Open Duck-style horizontal
+recovery impulses.
+
+Start a fresh walking run with:
+
+```bash
+.venv/bin/nubzuki-standing train --env walking --fresh --output runs/walking
+```
+
+To fine-tune from a compatible 87-observation standing parameter checkpoint,
+pass its `params` directory with `--restore` and set a target timestep larger
+than the restored absolute step.
+
 ## Physical robot
 
 The physical loop refuses policies that are not 87/14 at 50 Hz, are marked

@@ -13,9 +13,10 @@ Directly retained behavior:
 - 20 percent all-zero commands and command resampling every 10 seconds.
 - Residual position actions with scale 0.25 rad and 0-2 step action delay.
 - Reward scales: orientation -0.5, torque -0.001, action-rate -0.375,
-  leg stand-still -0.3, alive +20 and head position -5.0.
-- Random pushes every 4-8 seconds: 5-15 N on the torso or 2-5 N on the head,
-  sustained for 0.12-0.30 seconds.
+  leg stand-still -0.3, alive +20, head position -5.0 and negative hip-roll
+  (inward leg motion only) -2.0.
+- Open Duck-style recovery disturbances every 5-10 seconds: an instantaneous
+  0.1-1.0 m/s velocity impulse in a random horizontal XY direction.
 
 Nubzuki adaptations:
 

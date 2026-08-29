@@ -37,6 +37,13 @@ def _cost_head_pos(joints_qpos: jax.Array, command: jax.Array) -> jax.Array:
     return jp.nan_to_num(jp.sum(jp.square(head_position - head_command)))
 
 
+def _cost_negative_hip_roll(joints_qpos: jax.Array) -> jax.Array:
+    """Penalize inward hip roll while leaving outward recovery unrestricted."""
+    hip_roll = joints_qpos[jp.array([1, 10])]
+    inward = jp.minimum(hip_roll, 0.0)
+    return jp.nan_to_num(jp.sum(jp.square(inward)))
+
+
 def default_config() -> config_dict.ConfigDict:
     """The upstream Open Duck standing configuration."""
     calibration = NubzukiCalibration()
@@ -75,15 +82,14 @@ def default_config() -> config_dict.ConfigDict:
                 stand_still=-0.3,
                 alive=20.0,
                 head_pos=-5.0,
+                negative_hip_roll=-2.0,
             ),
             tracking_sigma=0.01,
         ),
         push_config=config_dict.create(
             enable=True,
-            interval_range=[4.0, 8.0],
-            torso_force_range_n=[5.0, 15.0],
-            head_force_range_n=[2.0, 5.0],
-            duration_range_s=[0.12, 0.30],
+            interval_range=[5.0, 10.0],
+            magnitude_range_m_s=[0.1, 1.0],
         ),
         neck_pitch_range=list(head_ranges["neck_pitch"]),
         head_pitch_range=list(head_ranges["head_pitch"]),
@@ -211,11 +217,9 @@ class Standing(NubzukiEnv):
             "feet_air_time": jp.zeros(2),
             "last_contact": jp.zeros(2, dtype=bool),
             "swing_peak": jp.zeros(2),
-            "push": jp.zeros(3),
-            "head_push": jp.zeros(3),
+            "push": jp.zeros(2),
             "push_step": 0,
             "push_interval_steps": push_interval_steps,
-            "push_remaining_steps": jp.array(0, dtype=jp.int32),
             "action_history": jp.zeros(
                 self._config.noise_config.action_max_delay * self._actuators
             ),
@@ -245,16 +249,11 @@ class Standing(NubzukiEnv):
         state.info["current_reference_motion"] = jp.zeros(0)
         (
             state.info["rng"],
-            torso_direction_rng,
-            torso_force_rng,
-            head_direction_rng,
-            head_force_rng,
-            push_duration_rng,
+            push_direction_rng,
+            push_magnitude_rng,
             push_interval_rng,
             delay_rng,
-        ) = jax.random.split(
-            state.info["rng"], 8
-        )
+        ) = jax.random.split(state.info["rng"], 5)
 
         action_history = (
             jp.roll(state.info["action_history"], self._actuators)
@@ -272,55 +271,30 @@ class Standing(NubzukiEnv):
             action_idx[0]
         ]
 
-        torso_direction = jax.random.normal(torso_direction_rng, (3,))
-        torso_direction /= jp.maximum(jp.linalg.norm(torso_direction), 1.0e-6)
-        torso_force_n = jax.random.uniform(
-            torso_force_rng,
-            minval=self._config.push_config.torso_force_range_n[0],
-            maxval=self._config.push_config.torso_force_range_n[1],
+        push_angle = jax.random.uniform(
+            push_direction_rng, minval=0.0, maxval=2.0 * jp.pi
         )
-        head_direction = jax.random.normal(head_direction_rng, (3,))
-        head_direction /= jp.maximum(jp.linalg.norm(head_direction), 1.0e-6)
-        head_force_n = jax.random.uniform(
-            head_force_rng,
-            minval=self._config.push_config.head_force_range_n[0],
-            maxval=self._config.push_config.head_force_range_n[1],
+        push_magnitude = jax.random.uniform(
+            push_magnitude_rng,
+            minval=self._config.push_config.magnitude_range_m_s[0],
+            maxval=self._config.push_config.magnitude_range_m_s[1],
         )
         push_event = (
             jp.mod(state.info["push_step"] + 1, state.info["push_interval_steps"])
             == 0
         )
         push_event &= self._config.push_config.enable
-        sampled_push = torso_direction * torso_force_n
-        sampled_head_push = head_direction * head_force_n
-        push_duration_s = jax.random.uniform(
-            push_duration_rng,
-            minval=self._config.push_config.duration_range_s[0],
-            maxval=self._config.push_config.duration_range_s[1],
-        )
-        sampled_duration_steps = jp.maximum(
-            jp.round(push_duration_s / self.dt).astype(jp.int32), 1
-        )
-        remaining_steps = jp.where(
-            push_event,
-            sampled_duration_steps,
-            state.info["push_remaining_steps"],
-        )
-        push = jp.where(push_event, sampled_push, state.info["push"])
-        head_push = jp.where(
-            push_event, sampled_head_push, state.info["head_push"]
-        )
-        applied_push = jp.where(remaining_steps > 0, push, jp.zeros(3))
-        applied_head_push = jp.where(
-            remaining_steps > 0, head_push, jp.zeros(3)
-        )
-        torso_wrench = jp.concatenate([applied_push, jp.zeros(3)])
-        head_wrench = jp.concatenate([applied_head_push, jp.zeros(3)])
-        xfrc_applied = state.data.xfrc_applied
-        xfrc_applied = xfrc_applied.at[self._torso_body_id].set(torso_wrench)
-        xfrc_applied = xfrc_applied.at[self._head_body_id].set(head_wrench)
+        sampled_push = jp.array([jp.cos(push_angle), jp.sin(push_angle)])
+        push = sampled_push * push_magnitude * push_event
+        qvel = state.data.qvel
+        base_xy = qvel[
+            self._floating_base_qvel_addr : self._floating_base_qvel_addr + 2
+        ]
+        qvel = qvel.at[
+            self._floating_base_qvel_addr : self._floating_base_qvel_addr + 2
+        ].set(base_xy + push)
         state = state.replace(
-            data=state.data.replace(xfrc_applied=xfrc_applied)
+            data=state.data.replace(qvel=qvel)
         )
 
         motor_targets = (
@@ -352,12 +326,7 @@ class Standing(NubzukiEnv):
         }
         reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
 
-        remaining_steps = jp.maximum(remaining_steps - 1, 0)
-        state.info["push"] = jp.where(remaining_steps > 0, push, jp.zeros(3))
-        state.info["head_push"] = jp.where(
-            remaining_steps > 0, head_push, jp.zeros(3)
-        )
-        state.info["push_remaining_steps"] = remaining_steps
+        state.info["push"] = push
         state.info["step"] += 1
         state.info["push_step"] = jp.where(
             push_event, 0, state.info["push_step"] + 1
@@ -527,6 +496,9 @@ class Standing(NubzukiEnv):
             "head_pos": _cost_head_pos(
                 self.get_actuator_joints_qpos(data.qpos),
                 info["command"],
+            ),
+            "negative_hip_roll": _cost_negative_hip_roll(
+                self.get_actuator_joints_qpos(data.qpos)
             ),
         }
 

@@ -9,15 +9,22 @@ from playground.common.runner import BaseRunner
 from playground.nubzuki import randomize
 from playground.nubzuki.calibration import NubzukiCalibration
 from playground.nubzuki.standing import Standing, default_config
+from playground.nubzuki.walking import Walking, default_config as walking_config
 
 
 class NubzukiStandingRunner(BaseRunner):
     def __init__(self, args):
         super().__init__(args)
         calibration = NubzukiCalibration(args.calibration)
-        config = default_config()
-        self.env = Standing(task="flat_terrain", config=config)
-        self.eval_env = Standing(task="flat_terrain", config=config)
+        policy_kind = getattr(args, "env", "standing")
+        if policy_kind == "walking":
+            config = walking_config()
+            environment = Walking
+        else:
+            config = default_config()
+            environment = Standing
+        self.env = environment(task="flat_terrain", config=config)
+        self.eval_env = environment(task="flat_terrain", config=config)
         self.randomizer = functools.partial(
             randomize.domain_randomize,
             floor_geom_id=self.env._floor_geom_id,
@@ -26,8 +33,8 @@ class NubzukiStandingRunner(BaseRunner):
         self.action_size = self.env.action_size
         self.obs_size = int(self.env.observation_size["state"][0])
         self.policy_metadata = {
-            "schema_version": 2, "robot": "nubzuki", "policy": "standing",
-            "model_semantics_version": 4,
+            "schema_version": 2, "robot": "nubzuki", "policy": policy_kind,
+            "model_semantics_version": 5 if policy_kind == "walking" else 4,
             "deployable": args.preset != "smoke",
             "upstream_commit": "ba59de88ab76163f2e0c2c95b4cd45fea5745106",
             "calibration_sha256": calibration.sha256,
@@ -52,6 +59,12 @@ class NubzukiStandingRunner(BaseRunner):
             },
             "no_placo": True, "no_imitation": True,
         }
+        if policy_kind == "walking":
+            self.policy_metadata.update(
+                gait_frequency_hz=float(config.gait_frequency_hz),
+                forward_velocity_range_m_s=list(config.forward_velocity_range_m_s),
+                swing_height_m=float(config.swing_height_m),
+            )
         profile_path = Path("config/head_dynamics.json")
         if profile_path.exists():
             from playground.nubzuki.head_dynamics import HeadDynamicsProfile

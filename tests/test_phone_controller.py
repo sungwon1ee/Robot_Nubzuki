@@ -74,7 +74,8 @@ class PhoneControllerTests(unittest.TestCase):
         self.assertEqual(self.controller.mode(), "walk")
         post(self.url, {"mode": "walk", "left_x": 1.0, "right_y": -1.0})
         axes, _, _ = self.controller.read()
-        self.assertEqual(axes, {name: 0.0 for name in AXES})
+        self.assertEqual(axes["left_x"], 1.0)
+        self.assertEqual(axes["right_y"], -1.0)
         post(self.url, {"mode": "not-a-mode"})
         self.assertEqual(self.controller.mode(), "head")
 
