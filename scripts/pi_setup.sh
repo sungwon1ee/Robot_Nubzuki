@@ -138,10 +138,10 @@ problems = []
 if meta.get("deployable") is not True:
     problems.append("deployable is not true (a smoke or unmarked policy is refused)")
 for key, want in (
-    ("observation_size", 87),
+    ("observation_size", 85),
     ("action_size", 14),
     ("control_frequency_hz", 50),
-    ("model_semantics_version", 4),
+    ("model_semantics_version", 6),
     ("calibration_sha256", calib_sha),
 ):
     got = meta.get(key)
@@ -164,7 +164,7 @@ if problems:
         print("    the hip roll axes changed in eb09d87 and the sign convention moved with them.")
     sys.exit(1)
 
-print("    \033[32mok\033[0m   87/14 @ 50 Hz, semantics v4, calibration and head profile match")
+print("    \033[32mok\033[0m   85/14 @ 50 Hz, semantics v6, calibration and head profile match")
 if recorded is None:
     print("    \033[33mwarn\033[0m policy.json has no head_dynamics_sha256; the profile is not cross-checked")
 PYEOF

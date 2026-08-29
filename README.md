@@ -5,7 +5,7 @@ commands. It is a no-Placo, no-imitation adaptation of Open Duck Playground's
 public `standing_policy` branch at commit
 `ba59de88ab76163f2e0c2c95b4cd45fea5745106`.
 
-The policy interface is fixed at 87 actor observations, 155 privileged
+The policy interface is fixed at 85 actor observations, 153 privileged
 observations and 14 residual joint-position actions. The first three command
 values (`vx`, `vy`, `yaw_rate`) are always zero. See `docs/SOURCES.md` for the
 exact upstream/adaptation boundary.
@@ -168,10 +168,11 @@ them.
 
 ## Forward/stop walking
 
-The walking task preserves the 87/155 observation ABI and activates the final
-gait-phase sine/cosine pair. It samples forward commands from 0.03 to 0.15 m/s,
-uses 20 percent all-zero commands, and keeps the Open Duck-style horizontal
-recovery impulses.
+The phase-free walking task uses the same 85/153 observation ABI. It samples
+forward commands from 0.03 to 0.15 m/s, uses 20 percent all-zero commands, and
+keeps the Open Duck-style horizontal recovery impulses. Gait timing emerges
+from IMU, joint, contact and action-history observations rather than an
+external oscillator.
 
 Start a fresh walking run with:
 
@@ -179,13 +180,12 @@ Start a fresh walking run with:
 .venv/bin/nubzuki-standing train --env walking --fresh --output runs/walking
 ```
 
-To fine-tune from a compatible 87-observation standing parameter checkpoint,
-pass its `params` directory with `--restore` and set a target timestep larger
-than the restored absolute step.
+The earlier 87-observation `test_4` checkpoint is intentionally incompatible;
+start this phase-free walking policy fresh.
 
 ## Physical robot
 
-The physical loop refuses policies that are not 87/14 at 50 Hz, are marked
+The physical loop refuses policies that are not 85/14 at 50 Hz, are marked
 non-deployable, use a different joint order, or have a different calibration
 hash. It also requires a matching head-dynamics profile.
 

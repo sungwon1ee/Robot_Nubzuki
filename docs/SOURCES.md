@@ -7,8 +7,8 @@ The training task is derived from the public Open Duck Playground
 Directly retained behavior:
 
 - 50 Hz control, 500 Hz simulation and 20 second episodes.
-- 87 actor observations (including gait phase sine/cosine), 155 privileged
-  observations and 14 actions.
+- 85 actor observations, 153 privileged observations and 14 actions. Walking
+  is phase-free and derives its timing from state and action history.
 - Seven commands with zero `vx`, `vy` and `yaw_rate` and four head targets.
 - 20 percent all-zero commands and command resampling every 10 seconds.
 - Residual position actions with scale 0.25 rad and 0-2 step action delay.

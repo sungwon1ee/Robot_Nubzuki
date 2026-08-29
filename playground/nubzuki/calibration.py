@@ -47,8 +47,8 @@ class NubzukiCalibration:
         servo_ids = [self.servo_id(name) for name in self.joint_order]
         if len(servo_ids) != len(set(servo_ids)):
             raise ValueError("Calibration contains duplicate servo IDs")
-        if self.observation_size != 87 or self.privileged_observation_size != 155:
-            raise ValueError("Policy must use observation ABI 87/155")
+        if self.observation_size != 85 or self.privileged_observation_size != 153:
+            raise ValueError("Policy must use observation ABI 85/153")
         if self.action_size != 14 or self.control_frequency_hz != 50:
             raise ValueError("Standing policy must use 14 actions at 50 Hz")
         for name in self.joint_order:

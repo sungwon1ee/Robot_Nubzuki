@@ -17,17 +17,15 @@ def validate(calibration_path: str | None = None) -> dict:
     calibration = NubzukiCalibration(calibration_path)
     env = Standing(config=default_config())
     state = jax.jit(env.reset)(jax.random.PRNGKey(0))
-    if state.obs["state"].shape != (87,):
+    if state.obs["state"].shape != (85,):
         raise AssertionError(f"actor observation mismatch: {state.obs['state'].shape}")
-    if state.obs["privileged_state"].shape != (155,):
+    if state.obs["privileged_state"].shape != (153,):
         raise AssertionError("privileged observation mismatch")
     if env.action_size != 14 or tuple(env.actuator_names) != calibration.joint_order:
         raise AssertionError("action size or joint order mismatch")
     state = jax.jit(env.step)(state, jp.zeros(14))
     if not np.isfinite(np.asarray(state.obs["state"])).all() or not np.isfinite(float(state.reward)):
         raise AssertionError("non-finite reset/step result")
-    if not np.allclose(np.asarray(state.obs["state"])[-2:], [0.0, 1.0]):
-        raise AssertionError("standing gait phase must stay fixed at [sin(0), cos(0)]")
     keys = jax.random.split(jax.random.PRNGKey(10), 512)
     commands = np.asarray(jax.vmap(env.sample_command)(keys))
     if not np.allclose(commands[:, :3], 0.0):
@@ -75,7 +73,7 @@ def validate(calibration_path: str | None = None) -> dict:
         if "poly_reference_motion" in text or "polynomial_coefficients" in text:
             raise AssertionError(f"imitation dependency found in {path.name}")
     return {
-        "actor_observation": 87, "privileged_observation": 155,
+        "actor_observation": 85, "privileged_observation": 153,
         "actions": 14, "joint_order": list(calibration.joint_order),
         "calibration_sha256": calibration.sha256,
         "zero_command_probability": default_config().zero_command_probability,

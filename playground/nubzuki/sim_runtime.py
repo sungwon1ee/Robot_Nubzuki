@@ -91,7 +91,6 @@ def run_simulation(
     limiter = HeadTrajectoryLimiter(profile)
     builder = ObservationBuilder()
     dt = 1.0 / calibration.control_frequency_hz
-    gait_phase = 0.0
     announced = False
     try:
         with mujoco.viewer.launch_passive(model, data) as viewer:
@@ -108,13 +107,6 @@ def run_simulation(
                 desired = axes_to_head_targets(head_axes, calibration, profile)
                 head = limiter.step(desired)
                 forward = forward_velocity_command(axes, mode, policy.metadata)
-                if forward > 0.01:
-                    frequency = float(policy.metadata.get("gait_frequency_hz", 2.0))
-                    gait_phase = (
-                        gait_phase + 2.0 * np.pi * frequency * dt
-                    ) % (2.0 * np.pi)
-                else:
-                    gait_phase = 0.0
                 command = np.asarray(
                     [forward, 0.0, 0.0] + [head[name] for name in HEAD_JOINTS]
                 )
@@ -123,7 +115,7 @@ def run_simulation(
                 obs = builder.build(
                     _sensor(model, data, constants.GYRO_SENSOR),
                     _sensor(model, data, constants.ACCELEROMETER_SENSOR),
-                    command, qpos, qvel, _contacts(model, data), gait_phase,
+                    command, qpos, qvel, _contacts(model, data),
                 )
                 action = policy.infer(obs)
                 builder.advance(action)

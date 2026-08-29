@@ -87,7 +87,6 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
     previous_targets = np.zeros(14)
     a_was_pressed = False
     dt = 1.0 / calibration.control_frequency_hz
-    gait_phase = 0.0
     try:
         hardware.disable_torque()
         hardware.preflight()
@@ -136,13 +135,6 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 forward_velocity_command(axes, mode, policy.metadata)
                 if input_fresh else 0.0
             )
-            if forward > 0.01:
-                frequency = float(policy.metadata.get("gait_frequency_hz", 2.0))
-                gait_phase = (
-                    gait_phase + 2.0 * np.pi * frequency * dt
-                ) % (2.0 * np.pi)
-            else:
-                gait_phase = 0.0
             command = np.asarray(
                 [forward, 0.0, 0.0]
                 + [head_targets[name] for name in HEAD_JOINTS]
@@ -152,7 +144,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             qvel = hardware.read_velocities()
             observation = builder.build(
                 imu_data["gyro"], imu_data["accelerometer"], command,
-                qpos, qvel, feet.read(), gait_phase,
+                qpos, qvel, feet.read(),
             )
             action = policy.infer(observation)
             builder.advance(action)

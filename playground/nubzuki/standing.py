@@ -226,9 +226,6 @@ class Standing(NubzukiEnv):
             "imu_history": jp.zeros(self._config.noise_config.imu_max_delay * 3),
             "imitation_i": 0,
             "current_reference_motion": jp.zeros(0),
-            # Reserved for the walking policy.  Standing keeps the gait phase
-            # fixed at zero, so its phase observation is always [0, 1].
-            "gait_phase": jp.array(0.0),
         }
 
         metrics = {}
@@ -444,8 +441,6 @@ class Standing(NubzukiEnv):
                 info["last_last_last_act"],
                 contact,
                 info["current_reference_motion"],
-                jp.sin(info["gait_phase"]),
-                jp.cos(info["gait_phase"]),
             ]
         )
 

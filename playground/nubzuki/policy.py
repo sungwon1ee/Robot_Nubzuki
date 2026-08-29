@@ -27,9 +27,9 @@ class StandingPolicy:
             raise RuntimeError("Smoke or unmarked policy cannot run on hardware")
         policy_kind = self.metadata.get("policy", "standing")
         expected = {
-            "observation_size": 87, "action_size": 14,
+            "observation_size": 85, "action_size": 14,
             "control_frequency_hz": 50, "calibration_sha256": calibration.sha256,
-            "model_semantics_version": 5 if policy_kind == "walking" else 4,
+            "model_semantics_version": 6,
         }
         for key, value in expected.items():
             if self.metadata.get(key) != value:
@@ -45,13 +45,13 @@ class StandingPolicy:
         self.session = ort.InferenceSession(str(self.path), providers=["CPUExecutionProvider"])
         input_shape = self.session.get_inputs()[0].shape
         output_shape = self.session.get_outputs()[0].shape
-        if input_shape[-1] != 87 or output_shape[-1] != 14:
+        if input_shape[-1] != 85 or output_shape[-1] != 14:
             raise RuntimeError(f"ONNX ABI mismatch: {input_shape} -> {output_shape}")
         self.input_name = self.session.get_inputs()[0].name
 
     def infer(self, observation: np.ndarray) -> np.ndarray:
         observation = np.asarray(observation, dtype=np.float32)
-        if observation.shape != (87,) or not np.isfinite(observation).all():
+        if observation.shape != (85,) or not np.isfinite(observation).all():
             raise RuntimeError(f"Invalid policy observation: {observation.shape}")
         action = self.session.run(None, {self.input_name: observation[None, :]})[0][0]
         if action.shape != (14,) or not np.isfinite(action).all():
@@ -67,16 +67,14 @@ class ObservationBuilder:
 
     def build(
         self, gyro, accelerometer, command, qpos, qvel, contacts,
-        gait_phase: float = 0.0,
     ) -> np.ndarray:
         obs = np.concatenate([
             np.asarray(gyro, dtype=float), np.asarray(accelerometer, dtype=float),
             np.asarray(command, dtype=float), np.asarray(qpos, dtype=float),
             np.asarray(qvel, dtype=float) * 0.05, self.last, self.last_last,
             self.last_last_last, np.asarray(contacts, dtype=float),
-            np.asarray([np.sin(gait_phase), np.cos(gait_phase)], dtype=float),
         ]).astype(np.float32)
-        if obs.shape != (87,) or not np.isfinite(obs).all():
+        if obs.shape != (85,) or not np.isfinite(obs).all():
             raise RuntimeError(f"Standing observation is invalid: {obs.shape}")
         return obs
 
