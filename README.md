@@ -172,7 +172,8 @@ The phase-free walking task uses the same 85/153 observation ABI. It samples
 forward commands from 0.03 to 0.15 m/s, uses 20 percent all-zero commands, and
 keeps the Open Duck-style horizontal recovery impulses. Gait timing emerges
 from IMU, joint, contact and action-history observations rather than an
-external oscillator.
+external oscillator. At each landing, swing height is scored against a 2.5 cm
+target and short 0.08-0.30 second steps receive an air-time reward.
 
 Start a fresh walking run with:
 

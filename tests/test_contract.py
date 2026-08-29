@@ -38,7 +38,11 @@ class RecordingHardware:
 
 class StandingContractTests(unittest.TestCase):
     def test_walking_keeps_abi_and_samples_only_forward_or_stop(self):
-        env = Walking(config=walking_config())
+        config = walking_config()
+        self.assertEqual(config.target_swing_height_m, 0.025)
+        self.assertEqual(config.reward_config.scales.feet_height, -1.0)
+        self.assertEqual(config.reward_config.scales.feet_air_time, 1.0)
+        env = Walking(config=config)
         state = env.reset(np.array([0, 1], dtype=np.uint32))
         self.assertEqual(state.obs["state"].shape, (85,))
         commands = np.asarray(

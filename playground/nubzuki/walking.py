@@ -6,14 +6,21 @@ import jax
 import jax.numpy as jp
 from ml_collections import config_dict
 
-from playground.common.rewards import reward_tracking_lin_vel
+from playground.common.rewards import (
+    cost_feet_height,
+    reward_feet_air_time,
+    reward_tracking_lin_vel,
+)
 from playground.nubzuki.standing import Standing, default_config as standing_config
 
 
 def default_config() -> config_dict.ConfigDict:
     config = standing_config()
     config.forward_velocity_range_m_s = [0.03, 0.15]
+    config.target_swing_height_m = 0.025
     config.reward_config.scales.tracking_lin_vel = 3.0
+    config.reward_config.scales.feet_height = -1.0
+    config.reward_config.scales.feet_air_time = 1.0
     return config
 
 
@@ -30,6 +37,18 @@ class Walking(Standing):
             info["command"],
             self.get_local_linvel(data),
             self._config.reward_config.tracking_sigma,
+        )
+        rewards["feet_height"] = cost_feet_height(
+            info["swing_peak"],
+            first_contact,
+            self._config.target_swing_height_m,
+        )
+        rewards["feet_air_time"] = reward_feet_air_time(
+            info["feet_air_time"],
+            first_contact,
+            info["command"],
+            threshold_min=0.08,
+            threshold_max=0.30,
         )
 
         return rewards

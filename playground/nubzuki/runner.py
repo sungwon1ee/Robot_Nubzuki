@@ -61,6 +61,7 @@ class NubzukiStandingRunner(BaseRunner):
         if policy_kind == "walking":
             self.policy_metadata.update(
                 forward_velocity_range_m_s=list(config.forward_velocity_range_m_s),
+                target_swing_height_m=float(config.target_swing_height_m),
             )
         profile_path = Path("config/head_dynamics.json")
         if profile_path.exists():

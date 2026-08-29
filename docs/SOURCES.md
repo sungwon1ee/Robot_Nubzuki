@@ -17,6 +17,8 @@ Directly retained behavior:
   (inward leg motion only) -2.0.
 - Open Duck-style recovery disturbances every 5-10 seconds: an instantaneous
   0.1-1.0 m/s velocity impulse in a random horizontal XY direction.
+- Phase-free walking evaluates each foot at landing: 0.025 m target swing
+  height and a bounded 0.08-0.30 second air-time reward.
 
 Nubzuki adaptations:
 
