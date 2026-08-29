@@ -27,12 +27,12 @@ class NubzukiStandingRunner(BaseRunner):
         self.obs_size = int(self.env.observation_size["state"][0])
         self.policy_metadata = {
             "schema_version": 2, "robot": "nubzuki", "policy": "standing",
-            "model_semantics_version": 3,
+            "model_semantics_version": 4,
             "deployable": args.preset != "smoke",
             "upstream_commit": "ba59de88ab76163f2e0c2c95b4cd45fea5745106",
             "calibration_sha256": calibration.sha256,
             "observation_size": self.obs_size,
-            "privileged_observation_size": 153,
+            "privileged_observation_size": 155,
             "action_size": self.action_size, "control_frequency_hz": 50,
             "command_order": list(calibration.command_order),
             "joint_order": list(calibration.joint_order),
@@ -40,10 +40,16 @@ class NubzukiStandingRunner(BaseRunner):
                 ["gyro", 3], ["accelerometer", 3], ["command", 7],
                 ["joint_position_error", 14], ["joint_velocity_x_0.05", 14],
                 ["action_history", 42], ["foot_contact", 2],
+                ["gait_phase_sin_cos", 2],
             ],
             "action_scale_rad": calibration.action_scale_rad,
             "action_scales_rad": [calibration.action_scale_rad] * 14,
             "action_delay_steps": [0, 2], "home_position_rad": [0.0] * 14,
+            "zero_command_probability": float(config.zero_command_probability),
+            "reward_scales": {
+                name: float(scale)
+                for name, scale in config.reward_config.scales.items()
+            },
             "no_placo": True, "no_imitation": True,
         }
         profile_path = Path("config/head_dynamics.json")

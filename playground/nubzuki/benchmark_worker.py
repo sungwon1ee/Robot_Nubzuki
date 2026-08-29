@@ -49,7 +49,7 @@ def run(num_envs: int) -> dict:
     steady = _stepper(STEADY_STEPS)
 
     key = jax.random.PRNGKey(9)
-    dims = (85, 512, 256, 128, 28)
+    dims = (87, 512, 256, 128, 28)
     params = []
     for fan_in, fan_out in zip(dims[:-1], dims[1:]):
         key, subkey = jax.random.split(key)
@@ -127,4 +127,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

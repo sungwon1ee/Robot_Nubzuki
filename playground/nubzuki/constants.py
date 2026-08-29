@@ -5,6 +5,16 @@ from etils import epath
 
 ROOT_PATH = epath.Path(__file__).parent
 FLAT_TERRAIN_XML = ROOT_PATH / "xmls" / "scene_flat_terrain.xml"
+DETAILED_SCENE_XML = ROOT_PATH.parent.parent.parent / "Nubzuki" / "mjcf" / "scene.xml"
+
+
+def simulation_xml() -> epath.Path:
+    """Use the detailed CAD visuals for native MuJoCo when available.
+
+    Training remains pinned to the lightweight MJX model above.  The detailed
+    model lives in the adjacent Nubzuki CAD project in the desktop workspace.
+    """
+    return DETAILED_SCENE_XML if DETAILED_SCENE_XML.exists() else FLAT_TERRAIN_XML
 
 
 def task_to_xml(task_name: str) -> epath.Path:
@@ -48,4 +58,3 @@ GLOBAL_ANGVEL_SENSOR = "global_angvel"
 LOCAL_LINVEL_SENSOR = "local_linvel"
 ACCELEROMETER_SENSOR = "accelerometer"
 GYRO_SENSOR = "gyro"
-

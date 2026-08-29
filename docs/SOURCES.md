@@ -7,13 +7,15 @@ The training task is derived from the public Open Duck Playground
 Directly retained behavior:
 
 - 50 Hz control, 500 Hz simulation and 20 second episodes.
-- 85 actor observations, 153 privileged observations and 14 actions.
+- 87 actor observations (including gait phase sine/cosine), 155 privileged
+  observations and 14 actions.
 - Seven commands with zero `vx`, `vy` and `yaw_rate` and four head targets.
-- 10 percent all-zero commands and command resampling every 10 seconds.
+- 20 percent all-zero commands and command resampling every 10 seconds.
 - Residual position actions with scale 0.25 rad and 0-2 step action delay.
 - Reward scales: orientation -0.5, torque -0.001, action-rate -0.375,
-  leg stand-still -0.3, alive +20 and head position -2.0.
-- Push schedule and dynamics randomization ranges.
+  leg stand-still -0.3, alive +20 and head position -5.0.
+- Random pushes every 4-8 seconds: 5-15 N on the torso or 2-5 N on the head,
+  sustained for 0.12-0.30 seconds.
 
 Nubzuki adaptations:
 
@@ -31,4 +33,3 @@ Nubzuki adaptations:
 The Disney papers in the workspace use artist-authored reference imitation
 and an animation engine. They are background reading, not the implementation
 source for this no-Placo task.
-

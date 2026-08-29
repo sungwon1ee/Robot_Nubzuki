@@ -5,7 +5,7 @@ commands. It is a no-Placo, no-imitation adaptation of Open Duck Playground's
 public `standing_policy` branch at commit
 `ba59de88ab76163f2e0c2c95b4cd45fea5745106`.
 
-The policy interface is fixed at 85 actor observations, 153 privileged
+The policy interface is fixed at 87 actor observations, 155 privileged
 observations and 14 residual joint-position actions. The first three command
 values (`vx`, `vy`, `yaw_rate`) are always zero. See `docs/SOURCES.md` for the
 exact upstream/adaptation boundary.
@@ -168,7 +168,7 @@ them.
 
 ## Physical robot
 
-The physical loop refuses policies that are not 85/14 at 50 Hz, are marked
+The physical loop refuses policies that are not 87/14 at 50 Hz, are marked
 non-deployable, use a different joint order, or have a different calibration
 hash. It also requires a matching head-dynamics profile.
 
@@ -182,4 +182,3 @@ hash. It also requires a matching head-dynamics profile.
 Servo torque is off during preflight. Press A to ramp to logical home and arm
 the policy. Press B for immediate torque-off. Stale IMU data, invalid policy
 values, sensor failure or process exit also disables torque.
-

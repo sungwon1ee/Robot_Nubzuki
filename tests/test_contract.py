@@ -31,6 +31,11 @@ class RecordingHardware:
 
 
 class StandingContractTests(unittest.TestCase):
+    def test_zero_command_and_head_tracking_are_prioritized(self):
+        config = default_config()
+        self.assertEqual(config.zero_command_probability, 0.20)
+        self.assertEqual(config.reward_config.scales.head_pos, -5.0)
+
     def test_simple_home_pose_has_no_self_collision(self):
         model_path = Path(
             "playground/nubzuki/xmls/scene_flat_terrain.xml"
@@ -114,18 +119,18 @@ class StandingContractTests(unittest.TestCase):
         env_config = default_config()
         self.assertEqual(list(env_config.push_config.interval_range), [4.0, 8.0])
         self.assertEqual(
-            list(env_config.push_config.torso_force_range_n), [3.0, 10.0]
+            list(env_config.push_config.torso_force_range_n), [5.0, 15.0]
         )
         self.assertEqual(
-            list(env_config.push_config.head_force_range_n), [1.0, 3.0]
+            list(env_config.push_config.head_force_range_n), [2.0, 5.0]
         )
         self.assertEqual(
-            list(env_config.push_config.duration_range_s), [0.08, 0.20]
+            list(env_config.push_config.duration_range_s), [0.12, 0.30]
         )
 
-    def test_v3_policy_semantics_are_explicit(self):
+    def test_v4_policy_semantics_are_explicit(self):
         source = Path("playground/nubzuki/runner.py").read_text()
-        self.assertIn('"model_semantics_version": 3', source)
+        self.assertIn('"model_semantics_version": 4', source)
         self.assertEqual(NubzukiCalibration().data["runtime"]["head_kp"], 24)
 
     def test_robot_phone_control_defaults_to_port_8766(self):
@@ -163,8 +168,8 @@ class StandingContractTests(unittest.TestCase):
         self.profile = HeadDynamicsProfile(self.profile_data, self.calibration)
 
     def test_calibration_abi(self):
-        self.assertEqual(self.calibration.observation_size, 85)
-        self.assertEqual(self.calibration.privileged_observation_size, 153)
+        self.assertEqual(self.calibration.observation_size, 87)
+        self.assertEqual(self.calibration.privileged_observation_size, 155)
         self.assertEqual(self.calibration.action_size, 14)
         self.assertEqual(self.calibration.control_frequency_hz, 50)
 
@@ -176,13 +181,14 @@ class StandingContractTests(unittest.TestCase):
                 )
                 self.assertAlmostEqual(recovered, value)
 
-    def test_observation_layout_is_85(self):
+    def test_observation_layout_is_87(self):
         builder = ObservationBuilder()
         obs = builder.build(
             np.zeros(3), np.zeros(3), np.zeros(7), np.zeros(14),
             np.zeros(14), np.zeros(2),
         )
-        self.assertEqual(obs.shape, (85,))
+        self.assertEqual(obs.shape, (87,))
+        np.testing.assert_allclose(obs[-2:], [0.0, 1.0])
         builder.advance(np.ones(14))
         shifted = builder.build(
             np.zeros(3), np.zeros(3), np.zeros(7), np.zeros(14),

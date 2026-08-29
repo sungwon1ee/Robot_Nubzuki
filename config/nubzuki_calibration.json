@@ -2,8 +2,8 @@
   "schema_version": 2,
   "angle_unit": "degree",
   "control_frequency_hz": 50,
-  "observation_size": 85,
-  "privileged_observation_size": 153,
+  "observation_size": 87,
+  "privileged_observation_size": 155,
   "action_size": 14,
   "joint_order": [
     "left_hip_yaw",

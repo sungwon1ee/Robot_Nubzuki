@@ -74,22 +74,23 @@ def default_config() -> config_dict.ConfigDict:
                 action_rate=-0.375,
                 stand_still=-0.3,
                 alive=20.0,
-                head_pos=-2.0,
+                head_pos=-5.0,
             ),
             tracking_sigma=0.01,
         ),
         push_config=config_dict.create(
             enable=True,
             interval_range=[4.0, 8.0],
-            torso_force_range_n=[3.0, 10.0],
-            head_force_range_n=[1.0, 3.0],
-            duration_range_s=[0.08, 0.20],
+            torso_force_range_n=[5.0, 15.0],
+            head_force_range_n=[2.0, 5.0],
+            duration_range_s=[0.12, 0.30],
         ),
         neck_pitch_range=list(head_ranges["neck_pitch"]),
         head_pitch_range=list(head_ranges["head_pitch"]),
         head_yaw_range=list(head_ranges["head_yaw"]),
         head_roll_range=list(head_ranges["head_roll"]),
         head_range_factor=1.0,
+        zero_command_probability=0.20,
     )
 
 
@@ -221,6 +222,9 @@ class Standing(NubzukiEnv):
             "imu_history": jp.zeros(self._config.noise_config.imu_max_delay * 3),
             "imitation_i": 0,
             "current_reference_motion": jp.zeros(0),
+            # Reserved for the walking policy.  Standing keeps the gait phase
+            # fixed at zero, so its phase observation is always [0, 1].
+            "gait_phase": jp.array(0.0),
         }
 
         metrics = {}
@@ -471,6 +475,8 @@ class Standing(NubzukiEnv):
                 info["last_last_last_act"],
                 contact,
                 info["current_reference_motion"],
+                jp.sin(info["gait_phase"]),
+                jp.cos(info["gait_phase"]),
             ]
         )
 
@@ -550,7 +556,9 @@ class Standing(NubzukiEnv):
             maxval=self._config.head_roll_range[1] * factor,
         )
         return jp.where(
-            jax.random.bernoulli(zero_rng, p=0.1),
+            jax.random.bernoulli(
+                zero_rng, p=self._config.zero_command_probability
+            ),
             jp.zeros(7),
             jp.hstack(
                 [0.0, 0.0, 0.0, neck_pitch, head_pitch, head_yaw, head_roll]

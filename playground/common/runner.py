@@ -25,7 +25,8 @@ class BaseRunner:
         self.args = args
         self.output_dir = Path(args.output).expanduser().resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.writer = SummaryWriter(log_dir=self.output_dir / "tensorboard")
+        self.tensorboard_dir = self.output_dir / "tensorboard"
+        self.tensorboard_dir.mkdir(parents=True, exist_ok=True)
         self.env = None
         self.eval_env = None
         self.randomizer = None
@@ -42,9 +43,18 @@ class BaseRunner:
 
     def progress_callback(self, num_steps: int, metrics: dict) -> None:
         absolute = self.step_offset + int(num_steps)
-        for name, value in metrics.items():
-            self.writer.add_scalar(name, value, absolute)
-        self.writer.flush()
+        # TensorboardX keeps a background event-writer thread.  On Colab that
+        # thread can stop after the initial JAX evaluation while add_scalar
+        # continues without surfacing an error, leaving a valid event file that
+        # contains only step 0.  Give every evaluation its own short-lived
+        # writer so its events are fully committed before training continues.
+        with SummaryWriter(
+            log_dir=self.tensorboard_dir,
+            filename_suffix=f".step-{absolute:012d}",
+        ) as writer:
+            for name, value in metrics.items():
+                writer.add_scalar(name, value, absolute)
+            writer.flush()
         print(f"step={absolute} eval_reward={metrics.get('eval/episode_reward', 'n/a')}")
 
     def policy_params_fn(self, current_step, make_policy, params) -> None:
@@ -119,4 +129,3 @@ class BaseRunner:
         )
         train_fn(environment=self.env, eval_env=self.eval_env,
                  wrap_env_fn=wrapper.wrap_for_brax_training)
-        self.writer.close()

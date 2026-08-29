@@ -17,19 +17,26 @@ def validate(calibration_path: str | None = None) -> dict:
     calibration = NubzukiCalibration(calibration_path)
     env = Standing(config=default_config())
     state = jax.jit(env.reset)(jax.random.PRNGKey(0))
-    if state.obs["state"].shape != (85,):
+    if state.obs["state"].shape != (87,):
         raise AssertionError(f"actor observation mismatch: {state.obs['state'].shape}")
-    if state.obs["privileged_state"].shape != (153,):
+    if state.obs["privileged_state"].shape != (155,):
         raise AssertionError("privileged observation mismatch")
     if env.action_size != 14 or tuple(env.actuator_names) != calibration.joint_order:
         raise AssertionError("action size or joint order mismatch")
     state = jax.jit(env.step)(state, jp.zeros(14))
     if not np.isfinite(np.asarray(state.obs["state"])).all() or not np.isfinite(float(state.reward)):
         raise AssertionError("non-finite reset/step result")
+    if not np.allclose(np.asarray(state.obs["state"])[-2:], [0.0, 1.0]):
+        raise AssertionError("standing gait phase must stay fixed at [sin(0), cos(0)]")
     keys = jax.random.split(jax.random.PRNGKey(10), 512)
     commands = np.asarray(jax.vmap(env.sample_command)(keys))
     if not np.allclose(commands[:, :3], 0.0):
         raise AssertionError("velocity command is not zero")
+    zero_ratio = float(np.mean(np.all(np.isclose(commands, 0.0), axis=1)))
+    if not 0.14 <= zero_ratio <= 0.26:
+        raise AssertionError(
+            f"all-zero command ratio {zero_ratio:.3f} is outside the 20% sampling band"
+        )
     for index, name in enumerate(HEAD_JOINTS, start=3):
         low, high = calibration.limits_rad(name)
         if commands[:, index].min() < low or commands[:, index].max() > high:
@@ -68,9 +75,11 @@ def validate(calibration_path: str | None = None) -> dict:
         if "poly_reference_motion" in text or "polynomial_coefficients" in text:
             raise AssertionError(f"imitation dependency found in {path.name}")
     return {
-        "actor_observation": 85, "privileged_observation": 153,
+        "actor_observation": 87, "privileged_observation": 155,
         "actions": 14, "joint_order": list(calibration.joint_order),
         "calibration_sha256": calibration.sha256,
+        "zero_command_probability": default_config().zero_command_probability,
+        "head_position_cost_scale": default_config().reward_config.scales.head_pos,
     }
 
 
@@ -83,4 +92,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

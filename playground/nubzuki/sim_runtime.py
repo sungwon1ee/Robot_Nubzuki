@@ -78,7 +78,11 @@ def run_simulation(
         policy_path, calibration, profile if may_check_hash else None,
         require_deployable=False,
     )
-    model = mujoco.MjModel.from_xml_path(str(constants.FLAT_TERRAIN_XML))
+    model_path = constants.simulation_xml()
+    print(f"MuJoCo model: {model_path}")
+    if model_path == constants.FLAT_TERRAIN_XML:
+        print("Detailed Nubzuki CAD scene was not found; using lightweight training geometry.")
+    model = mujoco.MjModel.from_xml_path(str(model_path))
     data = mujoco.MjData(model)
     mujoco.mj_resetDataKeyframe(model, data, model.keyframe("home").id)
     qpos_addresses = [model.jnt_qposadr[model.joint(name).id] for name in calibration.joint_order]
