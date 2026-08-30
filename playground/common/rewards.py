@@ -42,6 +42,11 @@ def cost_ang_vel_xy(global_angvel) -> jax.Array:
     return jp.nan_to_num(jp.sum(jp.square(global_angvel[:2])))
 
 
+def cost_yaw_rate(angular_velocity: jax.Array) -> jax.Array:
+    """Penalize turning for a policy whose commanded yaw rate is zero."""
+    return jp.nan_to_num(jp.square(angular_velocity[2]))
+
+
 def cost_orientation(torso_zaxis: jax.Array) -> jax.Array:
     return jp.nan_to_num(jp.sum(jp.square(torso_zaxis[:2])))
 

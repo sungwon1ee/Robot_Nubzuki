@@ -11,6 +11,7 @@ from playground.common.rewards import (
     cost_feet_clearance,
     cost_feet_height,
     cost_feet_slip_contact,
+    cost_yaw_rate,
     reward_feet_air_time_window,
     reward_forward_walking_composite,
     reward_pose_tracking,
@@ -60,6 +61,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.feet_height = 0.0
         scales.foot_slip = -0.02
         scales.body_ang_vel = 0.0
+        scales.yaw_rate = 0.0
         scales.action_rate = -0.01
         scales.head_pose_tracking = 0.0
     elif stage == "refine":
@@ -72,6 +74,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.feet_height = -0.05
         scales.foot_slip = -0.05
         scales.body_ang_vel = -0.01
+        scales.yaw_rate = -0.05
         scales.action_rate = -0.05
         scales.head_pose_tracking = 0.0
     else:
@@ -84,6 +87,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.feet_height = -0.1
         scales.foot_slip = -0.1
         scales.body_ang_vel = -0.02
+        scales.yaw_rate = -0.1
         scales.action_rate = -0.1
         scales.head_pose_tracking = 1.0
     config.reward_config.tracking_sigma = 0.01
@@ -147,6 +151,7 @@ class Walking(Standing):
         rewards["body_ang_vel"] = cost_ang_vel_xy(
             self.get_global_angvel(data)
         )
+        rewards["yaw_rate"] = cost_yaw_rate(self.get_gyro(data))
 
         return rewards
 
