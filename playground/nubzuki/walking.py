@@ -13,6 +13,8 @@ from playground.common.rewards import (
     cost_feet_slip_contact,
     cost_head_action_rate,
     cost_head_joint_velocity,
+    cost_head_roll_home,
+    cost_head_roll_velocity,
     cost_yaw_rate,
     reward_feet_air_time_window,
     reward_forward_walking_composite,
@@ -54,8 +56,11 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     scales.walking_task = 5.0
     scales.standing_task = 2.0
     scales.yaw_tracking = 0.0
+    scales.head_roll_home = 0.0
+    scales.head_roll_vel = 0.0
     config.yaw_rate_range_rad_s = [0.0, 0.0]
     config.straight_command_probability = 1.0
+    config.head_mode_probability = 0.0
     config.head_zero_probability = 1.0
 
     if stage == "discovery":
@@ -90,8 +95,9 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.head_joint_vel = 0.0
     elif stage == "control":
         config.forward_velocity_range_m_s = [0.04, 0.18]
-        config.zero_command_probability = 0.20
+        config.zero_command_probability = 0.25 * 0.25
         config.enable_head_command = True
+        config.head_mode_probability = 0.25
         config.head_zero_probability = 0.25
         scales.pose = 0.3
         scales.feet_air_time = 2.0
@@ -104,12 +110,15 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.head_pose_tracking = 1.0
         scales.head_action_rate = -0.02
         scales.head_joint_vel = -0.01
+        scales.head_roll_home = -5.0
+        scales.head_roll_vel = -0.1
     else:
         config.forward_velocity_range_m_s = [0.06, 0.18]
         config.yaw_rate_range_rad_s = [-0.3, 0.3]
         config.straight_command_probability = 0.30
-        config.zero_command_probability = 0.10
+        config.zero_command_probability = 0.25 * 0.25
         config.enable_head_command = True
+        config.head_mode_probability = 0.25
         config.head_zero_probability = 0.25
         scales.pose = 0.3
         scales.feet_air_time = 2.0
@@ -123,6 +132,8 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.head_pose_tracking = 1.0
         scales.head_action_rate = -0.03
         scales.head_joint_vel = -0.02
+        scales.head_roll_home = -5.0
+        scales.head_roll_vel = -0.1
     config.reward_config.tracking_sigma = 0.01
     return config
 
@@ -196,39 +207,61 @@ class Walking(Standing):
         rewards["head_joint_vel"] = cost_head_joint_velocity(
             self.get_actuator_joints_qvel(data.qvel)
         ) * locomotion_active
+        joint_vel = self.get_actuator_joints_qvel(data.qvel)
+        stopped_at_home = jp.linalg.norm(info["command"]) < 0.01
+        rewards["head_roll_home"] = cost_head_roll_home(joint_pos) * (
+            locomotion_active | stopped_at_home
+        )
+        rewards["head_roll_vel"] = cost_head_roll_velocity(
+            joint_vel
+        ) * locomotion_active
 
         return rewards
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
-        velocity_rng, yaw_rng, straight_rng, zero_rng, head_rng, head_zero_rng = (
-            jax.random.split(rng, 6)
-        )
-        standing_command = super().sample_command(head_rng)
-        standing_command = jp.where(
-            self._config.enable_head_command,
-            standing_command,
-            jp.zeros_like(standing_command),
-        )
-        # Standing.sample_command already emits an all-zero command with
-        # zero_command_probability. Add only the residual probability needed
-        # to make head=HOME exactly head_zero_probability of moving samples.
-        existing_zero = self._config.zero_command_probability
-        residual_head_zero = jp.clip(
-            (self._config.head_zero_probability - existing_zero)
-            / jp.maximum(1.0 - existing_zero, 1.0e-6),
-            0.0,
-            1.0,
-        )
-        zero_head = jax.random.bernoulli(head_zero_rng, p=residual_head_zero)
-        standing_command = standing_command.at[3:].set(
-            jp.where(zero_head, 0.0, standing_command[3:])
+        (
+            velocity_rng,
+            yaw_rng,
+            straight_rng,
+            mode_rng,
+            zero_rng,
+            head_zero_rng,
+            neck_rng,
+            pitch_rng,
+            head_yaw_rng,
+            roll_rng,
+        ) = jax.random.split(rng, 10)
+        factor = self._config.head_range_factor
+        head_command = jp.array(
+            [
+                jax.random.uniform(
+                    neck_rng,
+                    minval=self._config.neck_pitch_range[0] * factor,
+                    maxval=self._config.neck_pitch_range[1] * factor,
+                ),
+                jax.random.uniform(
+                    pitch_rng,
+                    minval=self._config.head_pitch_range[0] * factor,
+                    maxval=self._config.head_pitch_range[1] * factor,
+                ),
+                jax.random.uniform(
+                    head_yaw_rng,
+                    minval=self._config.head_yaw_range[0] * factor,
+                    maxval=self._config.head_yaw_range[1] * factor,
+                ),
+                jax.random.uniform(
+                    roll_rng,
+                    minval=self._config.head_roll_range[0] * factor,
+                    maxval=self._config.head_roll_range[1] * factor,
+                ),
+            ]
         )
         forward_velocity = jax.random.uniform(
             velocity_rng,
             minval=self._config.forward_velocity_range_m_s[0],
             maxval=self._config.forward_velocity_range_m_s[1],
         )
-        command = standing_command.at[0].set(forward_velocity)
+        moving_command = jp.hstack([forward_velocity, 0.0, 0.0, head_command])
         yaw_rate = jax.random.uniform(
             yaw_rng,
             minval=self._config.yaw_rate_range_rad_s[0],
@@ -241,11 +274,31 @@ class Walking(Standing):
             0.0,
             yaw_rate,
         )
-        command = command.at[2].set(yaw_rate)
+        moving_command = moving_command.at[2].set(yaw_rate)
+        # Walk mode does not expose head-roll control.  Training it at a
+        # nonzero target only teaches the oscillation we are trying to remove.
+        moving_command = moving_command.at[6].set(0.0)
+        head_mode_command = jp.hstack([jp.zeros(3), head_command])
+        head_mode_command = jp.where(
+            jax.random.bernoulli(
+                head_zero_rng, p=self._config.head_zero_probability
+            ),
+            jp.zeros(7),
+            head_mode_command,
+        )
+        controlled_command = jp.where(
+            jax.random.bernoulli(
+                mode_rng, p=self._config.head_mode_probability
+            ),
+            head_mode_command,
+            moving_command,
+        )
+        if self._config.enable_head_command:
+            return controlled_command
         return jp.where(
             jax.random.bernoulli(
                 zero_rng, p=self._config.zero_command_probability
             ),
             jp.zeros(7),
-            command,
+            moving_command.at[3:].set(0.0),
         )

@@ -81,10 +81,13 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(refine.reward_config.scales.head_action_rate, -0.01)
         self.assertEqual(control.reward_config.scales.head_action_rate, -0.02)
         self.assertEqual(control.reward_config.scales.head_joint_vel, -0.01)
+        self.assertEqual(control.reward_config.scales.head_roll_home, -5.0)
+        self.assertEqual(control.reward_config.scales.head_roll_vel, -0.1)
         self.assertTrue(control.enable_head_command)
+        self.assertEqual(control.head_mode_probability, 0.25)
         self.assertEqual(control.head_zero_probability, 0.25)
         self.assertGreater(control.reward_config.scales.head_pose_tracking, 0.0)
-        self.assertEqual(control.zero_command_probability, 0.20)
+        self.assertEqual(control.zero_command_probability, 0.25 * 0.25)
         control_env = Walking(config=control)
         commands = np.asarray(
             jax.vmap(control_env.sample_command)(
@@ -92,8 +95,11 @@ class StandingContractTests(unittest.TestCase):
             )
         )
         moving = np.linalg.norm(commands[:, :3], axis=1) > 0.01
+        head_mode = ~moving
         head_at_home = np.all(commands[:, 3:] == 0.0, axis=1)
-        self.assertAlmostEqual(np.mean(head_at_home[moving]), 0.25, delta=0.03)
+        self.assertAlmostEqual(np.mean(head_mode), 0.25, delta=0.03)
+        self.assertAlmostEqual(np.mean(head_at_home[head_mode]), 0.25, delta=0.04)
+        np.testing.assert_allclose(commands[moving, 6], 0.0)
 
         turning = walking_config("turning")
         self.assertEqual(turning.yaw_rate_range_rad_s, [-0.3, 0.3])
@@ -101,7 +107,10 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(turning.reward_config.scales.yaw_tracking, 2.0)
         self.assertEqual(turning.reward_config.scales.head_action_rate, -0.03)
         self.assertEqual(turning.reward_config.scales.head_joint_vel, -0.02)
+        self.assertEqual(turning.reward_config.scales.head_roll_home, -5.0)
+        self.assertEqual(turning.reward_config.scales.head_roll_vel, -0.1)
         self.assertEqual(turning.head_zero_probability, 0.25)
+        self.assertEqual(turning.head_mode_probability, 0.25)
 
     def test_turning_maps_right_stick_to_yaw_rate(self):
         metadata = {

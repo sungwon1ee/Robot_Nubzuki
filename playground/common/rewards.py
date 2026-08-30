@@ -149,6 +149,16 @@ def cost_head_joint_velocity(joint_velocity: jax.Array) -> jax.Array:
     return jp.nan_to_num(jp.sum(jp.square(joint_velocity[5:9])))
 
 
+def cost_head_roll_velocity(joint_velocity: jax.Array) -> jax.Array:
+    """Penalize physical head-roll motion independently of the other joints."""
+    return jp.nan_to_num(jp.square(joint_velocity[8]))
+
+
+def cost_head_roll_home(joint_position: jax.Array) -> jax.Array:
+    """Penalize head roll away from its logical zero/home position."""
+    return jp.nan_to_num(jp.square(joint_position[8]))
+
+
 # Other rewards.
 
 

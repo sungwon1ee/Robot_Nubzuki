@@ -98,6 +98,12 @@ def run_simulation(
     announced = False
     try:
         with mujoco.viewer.launch_passive(model, data) as viewer:
+            tracked_body_id = model.body("trunk").id
+            viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+            viewer.cam.trackbodyid = tracked_body_id
+            viewer.cam.distance = 1.0
+            viewer.cam.azimuth = 180.0
+            viewer.cam.elevation = -15.0
             while viewer.is_running():
                 started = time.monotonic()
                 axes, _, b_pressed = controller.read()
@@ -127,6 +133,12 @@ def run_simulation(
                 data.ctrl[:] = action * calibration.action_scale_rad
                 for _ in range(10):
                     mujoco.mj_step(model, data)
+                # Mouse panning changes the viewer's look-at point (and can
+                # switch camera mode), so restore only the tracking target.
+                # Rotation and zoom remain user-adjustable.
+                viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+                viewer.cam.trackbodyid = tracked_body_id
+                viewer.cam.lookat[:] = data.xpos[tracked_body_id]
                 viewer.sync()
                 time.sleep(max(0.0, dt - (time.monotonic() - started)))
     finally:
