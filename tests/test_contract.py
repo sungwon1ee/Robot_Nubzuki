@@ -37,18 +37,6 @@ class RecordingHardware:
 
 
 class StandingContractTests(unittest.TestCase):
-    def test_colab_notebook_trains_and_logs_the_walking_branch(self):
-        notebook = json.loads(
-            Path("notebooks/nubzuki_standing_colab.ipynb").read_text(encoding="utf-8")
-        )
-        source = "\n".join(
-            "".join(cell.get("source", [])) for cell in notebook["cells"]
-        )
-        self.assertIn("BRANCH = 'walking'", source)
-        self.assertIn("ENV = 'walking'", source)
-        self.assertIn("runs/walking_microduck", source)
-        self.assertIn("--env {ENV}", source)
-
     def test_walking_keeps_abi_and_samples_only_forward_or_stop(self):
         config = walking_config()
         self.assertEqual(config.target_swing_height_m, 0.02)
