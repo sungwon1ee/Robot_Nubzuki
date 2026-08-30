@@ -52,6 +52,42 @@ def reward_upright(torso_zaxis: jax.Array, std: float) -> jax.Array:
     return jp.nan_to_num(jp.exp(-tilt_error / jp.square(std)))
 
 
+def reward_forward_walking_composite(
+    commands: jax.Array,
+    local_vel: jax.Array,
+    torso_zaxis: jax.Array,
+    tracking_sigma: float,
+    upright_std: float,
+    command_threshold: float = 0.01,
+) -> jax.Array:
+    """Forward progress × velocity tracking × upright, zero at no movement."""
+    target = commands[0]
+    moving_command = target > command_threshold
+    safe_target = jp.maximum(target, command_threshold)
+    velocity_error = jp.square(local_vel[0] - target) + jp.square(local_vel[1])
+    tracking = jp.exp(-velocity_error / tracking_sigma)
+    movement = jp.clip(local_vel[0] / safe_target, 0.0, 1.0)
+    upright = reward_upright(torso_zaxis, upright_std)
+    return jp.nan_to_num(tracking * movement * upright * moving_command)
+
+
+def reward_standing_composite(
+    commands: jax.Array,
+    qpos: jax.Array,
+    default_pose: jax.Array,
+    torso_zaxis: jax.Array,
+    standing_std: jax.Array,
+    upright_std: float,
+    command_threshold: float = 0.01,
+) -> jax.Array:
+    """Upright × nominal leg pose, active only for an exact stop command."""
+    stopped = jp.linalg.norm(commands[:3]) < command_threshold
+    pose = reward_variable_posture(
+        qpos, default_pose, commands, standing_std, standing_std, command_threshold
+    )
+    return jp.nan_to_num(reward_upright(torso_zaxis, upright_std) * pose * stopped)
+
+
 def cost_base_height(base_height: jax.Array, base_height_target: float) -> jax.Array:
     return jp.nan_to_num(jp.square(base_height - base_height_target))
 
@@ -245,12 +281,15 @@ def reward_feet_air_time(
 def reward_feet_air_time_window(
     air_time: jax.Array,
     commands: jax.Array,
+    in_air: jax.Array | None = None,
     threshold_min: float = 0.125,
     threshold_max: float = 0.30,
     command_threshold: float = 0.01,
 ) -> jax.Array:
     """Microduck's per-step reward for feet in the desired air-time window."""
     in_range = (air_time > threshold_min) & (air_time < threshold_max)
+    if in_air is not None:
+        in_range &= jp.sum(in_air.astype(jp.int32)) == 1
     active = jp.linalg.norm(commands[:3]) > command_threshold
     return jp.nan_to_num(jp.sum(in_range.astype(jp.float32)) * active)
 

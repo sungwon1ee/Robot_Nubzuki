@@ -40,16 +40,18 @@ class StandingContractTests(unittest.TestCase):
     def test_walking_keeps_abi_and_samples_only_forward_or_stop(self):
         config = walking_config()
         self.assertEqual(config.target_swing_height_m, 0.02)
-        self.assertEqual(config.reward_config.scales.tracking_lin_vel, 2.0)
-        self.assertEqual(config.reward_config.scales.upright, 2.0)
-        self.assertEqual(config.reward_config.scales.pose, 1.0)
-        self.assertEqual(config.reward_config.scales.feet_height, -0.25)
-        self.assertEqual(config.reward_config.scales.feet_air_time, 3.0)
-        self.assertEqual(config.reward_config.scales.foot_clearance, -2.0)
-        self.assertEqual(config.reward_config.scales.foot_slip, -0.1)
-        self.assertEqual(config.reward_config.scales.action_rate, -0.1)
+        self.assertEqual(config.walking_stage, "discovery")
+        self.assertEqual(config.forward_velocity_range_m_s, [0.15, 0.15])
+        self.assertEqual(config.reward_config.scales.walking_task, 5.0)
+        self.assertEqual(config.reward_config.scales.standing_task, 2.0)
+        self.assertEqual(config.reward_config.scales.pose, 0.0)
+        self.assertEqual(config.reward_config.scales.feet_height, 0.0)
+        self.assertEqual(config.reward_config.scales.feet_air_time, 2.0)
+        self.assertEqual(config.reward_config.scales.foot_clearance, 0.0)
+        self.assertEqual(config.reward_config.scales.foot_slip, -0.02)
+        self.assertEqual(config.reward_config.scales.action_rate, -0.01)
         self.assertEqual(config.reward_config.scales.alive, 0.0)
-        self.assertEqual(config.reward_config.scales.head_pose_tracking, 2.0)
+        self.assertEqual(config.reward_config.scales.head_pose_tracking, 0.0)
         env = Walking(config=config)
         state = env.reset(np.array([0, 1], dtype=np.uint32))
         self.assertEqual(state.obs["state"].shape, (85,))
@@ -58,7 +60,22 @@ class StandingContractTests(unittest.TestCase):
         )
         self.assertTrue(np.all(commands[:, 0] >= 0.0))
         np.testing.assert_allclose(commands[:, 1:3], 0.0)
-        self.assertGreater(np.mean(commands[:, 0] == 0.0), 0.1)
+        self.assertGreater(np.mean(commands[:, 0] == 0.0), 0.02)
+
+    def test_walking_curriculum_progressively_adds_control_and_regularization(self):
+        discovery = walking_config("discovery")
+        refine = walking_config("refine")
+        control = walking_config("control")
+        self.assertLess(discovery.reward_config.scales.action_rate, 0.0)
+        self.assertGreater(
+            abs(control.reward_config.scales.action_rate),
+            abs(discovery.reward_config.scales.action_rate),
+        )
+        self.assertEqual(discovery.reward_config.scales.foot_clearance, 0.0)
+        self.assertLess(refine.reward_config.scales.foot_clearance, 0.0)
+        self.assertTrue(control.enable_head_command)
+        self.assertGreater(control.reward_config.scales.head_pose_tracking, 0.0)
+        self.assertEqual(control.zero_command_probability, 0.20)
 
     def test_walk_mode_maps_only_forward_stick(self):
         metadata = {

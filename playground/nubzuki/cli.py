@@ -32,6 +32,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="train standing or the forward/stop walking task",
     )
     train.add_argument(
+        "--walk-stage", choices=("discovery", "refine", "control"),
+        default="discovery",
+        help="walking curriculum stage; ignored by the standing environment",
+    )
+    train.add_argument(
         "--preset", choices=("smoke", "profile", "macbook", "official"), default="profile",
         help="profile uses the benchmark result; macbook is an alias for it",
     )

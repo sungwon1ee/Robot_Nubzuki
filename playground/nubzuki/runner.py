@@ -18,7 +18,7 @@ class NubzukiStandingRunner(BaseRunner):
         calibration = NubzukiCalibration(args.calibration)
         policy_kind = getattr(args, "env", "standing")
         if policy_kind == "walking":
-            config = walking_config()
+            config = walking_config(getattr(args, "walk_stage", "discovery"))
             environment = Walking
         else:
             config = default_config()
@@ -60,6 +60,7 @@ class NubzukiStandingRunner(BaseRunner):
         }
         if policy_kind == "walking":
             self.policy_metadata.update(
+                walking_stage=str(config.walking_stage),
                 forward_velocity_range_m_s=list(config.forward_velocity_range_m_s),
                 target_swing_height_m=float(config.target_swing_height_m),
             )
