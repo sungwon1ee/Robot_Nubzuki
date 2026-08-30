@@ -80,7 +80,7 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(control.reward_config.scales.yaw_rate, -0.1)
         self.assertEqual(refine.reward_config.scales.head_action_rate, -0.01)
         self.assertEqual(control.reward_config.scales.head_action_rate, -0.02)
-        self.assertEqual(control.reward_config.scales.head_joint_vel, -0.005)
+        self.assertEqual(control.reward_config.scales.head_joint_vel, -0.01)
         self.assertTrue(control.enable_head_command)
         self.assertEqual(control.head_zero_probability, 0.25)
         self.assertGreater(control.reward_config.scales.head_pose_tracking, 0.0)
@@ -100,7 +100,7 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(turning.reward_config.scales.yaw_rate, 0.0)
         self.assertEqual(turning.reward_config.scales.yaw_tracking, 2.0)
         self.assertEqual(turning.reward_config.scales.head_action_rate, -0.03)
-        self.assertEqual(turning.reward_config.scales.head_joint_vel, -0.01)
+        self.assertEqual(turning.reward_config.scales.head_joint_vel, -0.02)
         self.assertEqual(turning.head_zero_probability, 0.25)
 
     def test_turning_maps_right_stick_to_yaw_rate(self):

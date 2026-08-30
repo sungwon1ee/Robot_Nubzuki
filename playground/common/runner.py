@@ -43,6 +43,15 @@ class BaseRunner:
 
     def progress_callback(self, num_steps: int, metrics: dict) -> None:
         absolute = self.step_offset + int(num_steps)
+        metrics = dict(metrics)
+        episode_length = metrics.get("eval/avg_episode_length")
+        action_rate = metrics.get("eval/episode_cost/action_rate")
+        if episode_length is not None and action_rate is not None:
+            episode_length = float(episode_length)
+            if episode_length > 0.0:
+                metrics["eval/action_rate_per_step"] = (
+                    float(action_rate) / episode_length
+                )
         # TensorboardX keeps a background event-writer thread.  On Colab that
         # thread can stop after the initial JAX evaluation while add_scalar
         # continues without surfacing an error, leaving a valid event file that
@@ -53,6 +62,8 @@ class BaseRunner:
             filename_suffix=f".step-{absolute:012d}",
         ) as writer:
             for name, value in metrics.items():
+                if name.endswith("_std"):
+                    continue
                 writer.add_scalar(name, value, absolute)
             writer.flush()
         print(f"step={absolute} eval_reward={metrics.get('eval/episode_reward', 'n/a')}")
