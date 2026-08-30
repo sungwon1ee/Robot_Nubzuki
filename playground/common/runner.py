@@ -45,13 +45,23 @@ class BaseRunner:
         absolute = self.step_offset + int(num_steps)
         metrics = dict(metrics)
         episode_length = metrics.get("eval/avg_episode_length")
-        action_rate = metrics.get("eval/episode_cost/action_rate")
-        if episode_length is not None and action_rate is not None:
+        if episode_length is not None:
             episode_length = float(episode_length)
             if episode_length > 0.0:
-                metrics["eval/action_rate_per_step"] = (
-                    float(action_rate) / episode_length
+                episode_prefixes = (
+                    "eval/episode_cost/",
+                    "eval/episode_reward/",
                 )
+                per_step_metrics = {}
+                for name, value in metrics.items():
+                    for prefix in episode_prefixes:
+                        if name.startswith(prefix) and not name.endswith("_std"):
+                            component = name.removeprefix(prefix)
+                            per_step_metrics[f"eval/{component}_per_step"] = (
+                                float(value) / episode_length
+                            )
+                            break
+                metrics.update(per_step_metrics)
         # TensorboardX keeps a background event-writer thread.  On Colab that
         # thread can stop after the initial JAX evaluation while add_scalar
         # continues without surfacing an error, leaving a valid event file that
