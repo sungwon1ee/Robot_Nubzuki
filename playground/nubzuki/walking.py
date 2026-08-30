@@ -59,7 +59,9 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     scales.head_roll_home = 0.0
     scales.head_roll_vel = 0.0
     config.yaw_rate_range_rad_s = [0.0, 0.0]
+    config.yaw_tracking_sigma = 0.1
     config.straight_command_probability = 1.0
+    config.turn_in_place_probability = 0.0
     config.head_mode_probability = 0.0
     config.head_zero_probability = 1.0
 
@@ -115,7 +117,9 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     else:
         config.forward_velocity_range_m_s = [0.06, 0.18]
         config.yaw_rate_range_rad_s = [-0.3, 0.3]
+        config.yaw_tracking_sigma = 0.04
         config.straight_command_probability = 0.30
+        config.turn_in_place_probability = 0.20
         config.zero_command_probability = 0.25 * 0.25
         config.enable_head_command = True
         config.head_mode_probability = 0.25
@@ -127,7 +131,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.foot_slip = -0.1
         scales.body_ang_vel = -0.02
         scales.yaw_rate = 0.0
-        scales.yaw_tracking = 2.0
+        scales.yaw_tracking = 5.0
         scales.action_rate = -0.1
         scales.head_pose_tracking = 1.0
         scales.head_action_rate = -0.03
@@ -197,7 +201,8 @@ class Walking(Standing):
         )
         rewards["yaw_rate"] = cost_yaw_rate(self.get_gyro(data))
         rewards["yaw_tracking"] = reward_tracking_yaw_rate(
-            info["command"], self.get_gyro(data), 0.1, gravity,
+            info["command"], self.get_gyro(data),
+            self._config.yaw_tracking_sigma, gravity,
             self._config.upright_std,
         )
         locomotion_active = jp.linalg.norm(info["command"][:3]) > 0.01
@@ -223,6 +228,7 @@ class Walking(Standing):
             velocity_rng,
             yaw_rng,
             straight_rng,
+            turn_in_place_rng,
             mode_rng,
             zero_rng,
             head_zero_rng,
@@ -230,7 +236,7 @@ class Walking(Standing):
             pitch_rng,
             head_yaw_rng,
             roll_rng,
-        ) = jax.random.split(rng, 10)
+        ) = jax.random.split(rng, 11)
         factor = self._config.head_range_factor
         head_command = jp.array(
             [
@@ -275,6 +281,12 @@ class Walking(Standing):
             yaw_rate,
         )
         moving_command = moving_command.at[2].set(yaw_rate)
+        turn_in_place = jax.random.bernoulli(
+            turn_in_place_rng, p=self._config.turn_in_place_probability
+        ) & (jp.abs(yaw_rate) > 0.01)
+        moving_command = moving_command.at[0].set(
+            jp.where(turn_in_place, 0.0, moving_command[0])
+        )
         # Walk mode does not expose head-roll control.  Training it at a
         # nonzero target only teaches the oscillation we are trying to remove.
         moving_command = moving_command.at[6].set(0.0)

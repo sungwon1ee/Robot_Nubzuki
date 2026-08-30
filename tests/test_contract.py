@@ -103,14 +103,29 @@ class StandingContractTests(unittest.TestCase):
 
         turning = walking_config("turning")
         self.assertEqual(turning.yaw_rate_range_rad_s, [-0.3, 0.3])
+        self.assertEqual(turning.yaw_tracking_sigma, 0.04)
+        self.assertEqual(turning.turn_in_place_probability, 0.20)
         self.assertEqual(turning.reward_config.scales.yaw_rate, 0.0)
-        self.assertEqual(turning.reward_config.scales.yaw_tracking, 2.0)
+        self.assertEqual(turning.reward_config.scales.yaw_tracking, 5.0)
         self.assertEqual(turning.reward_config.scales.head_action_rate, -0.03)
         self.assertEqual(turning.reward_config.scales.head_joint_vel, -0.02)
         self.assertEqual(turning.reward_config.scales.head_roll_home, -5.0)
         self.assertEqual(turning.reward_config.scales.head_roll_vel, -0.1)
         self.assertEqual(turning.head_zero_probability, 0.25)
         self.assertEqual(turning.head_mode_probability, 0.25)
+        turning_env = Walking(config=turning)
+        turning_commands = np.asarray(
+            jax.vmap(turning_env.sample_command)(
+                jax.random.split(jax.random.PRNGKey(23), 4096)
+            )
+        )
+        turn_in_place = (
+            (turning_commands[:, 0] == 0.0)
+            & (np.abs(turning_commands[:, 2]) > 0.01)
+        )
+        self.assertGreater(np.mean(turn_in_place), 0.08)
+        self.assertTrue(np.any(turning_commands[:, 2] > 0.01))
+        self.assertTrue(np.any(turning_commands[:, 2] < -0.01))
 
     def test_turning_maps_right_stick_to_yaw_rate(self):
         metadata = {
