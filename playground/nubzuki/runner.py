@@ -63,6 +63,7 @@ class NubzukiStandingRunner(BaseRunner):
                 walking_stage=str(config.walking_stage),
                 forward_velocity_range_m_s=list(config.forward_velocity_range_m_s),
                 target_swing_height_m=float(config.target_swing_height_m),
+                yaw_rate_range_rad_s=list(config.yaw_rate_range_rad_s),
             )
         profile_path = Path("config/head_dynamics.json")
         if profile_path.exists():

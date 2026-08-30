@@ -32,6 +32,17 @@ def forward_velocity_command(
     return stick * float(limits[1])
 
 
+def yaw_rate_command(
+    axes: dict[str, float], mode: str, policy_metadata: dict
+) -> float:
+    """Map right-stick horizontal motion to a trained yaw-rate command."""
+    if mode != "walk" or policy_metadata.get("policy") != "walking":
+        return 0.0
+    low, high = policy_metadata.get("yaw_rate_range_rad_s", [0.0, 0.0])
+    stick = apply_deadzone(axes.get("right_x", 0.0), 0.1)
+    return scale_axis(stick, (float(low), float(high)))
+
+
 def axes_to_head_targets(
     axes: dict[str, float], calibration: NubzukiCalibration,
     profile: HeadDynamicsProfile,

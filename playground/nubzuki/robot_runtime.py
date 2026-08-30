@@ -12,6 +12,7 @@ from playground.nubzuki.controller import (
     XboxController,
     axes_to_head_targets,
     forward_velocity_command,
+    yaw_rate_command,
 )
 from playground.nubzuki.hardware import ServoHardware
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
@@ -135,8 +136,12 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 forward_velocity_command(axes, mode, policy.metadata)
                 if input_fresh else 0.0
             )
+            yaw_rate = (
+                yaw_rate_command(axes, mode, policy.metadata)
+                if input_fresh else 0.0
+            )
             command = np.asarray(
-                [forward, 0.0, 0.0]
+                [forward, 0.0, yaw_rate]
                 + [head_targets[name] for name in HEAD_JOINTS]
             )
             imu_data = imu.read()

@@ -12,11 +12,13 @@ from playground.common.rewards import (
     cost_feet_height,
     cost_feet_slip_contact,
     cost_head_action_rate,
+    cost_head_joint_velocity,
     cost_yaw_rate,
     reward_feet_air_time_window,
     reward_forward_walking_composite,
     reward_pose_tracking,
     reward_standing_composite,
+    reward_tracking_yaw_rate,
     reward_tracking_lin_vel,
     reward_upright,
     reward_variable_posture,
@@ -24,7 +26,7 @@ from playground.common.rewards import (
 from playground.nubzuki.standing import Standing, default_config as standing_config
 
 
-WALKING_STAGES = ("discovery", "refine", "control")
+WALKING_STAGES = ("discovery", "refine", "control", "turning")
 
 
 def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
@@ -51,6 +53,10 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     scales.upright = 0.0
     scales.walking_task = 5.0
     scales.standing_task = 2.0
+    scales.yaw_tracking = 0.0
+    config.yaw_rate_range_rad_s = [0.0, 0.0]
+    config.straight_command_probability = 1.0
+    config.head_zero_probability = 1.0
 
     if stage == "discovery":
         config.forward_velocity_range_m_s = [0.15, 0.15]
@@ -66,6 +72,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.action_rate = -0.01
         scales.head_pose_tracking = 0.0
         scales.head_action_rate = 0.0
+        scales.head_joint_vel = 0.0
     elif stage == "refine":
         config.forward_velocity_range_m_s = [0.12, 0.18]
         config.zero_command_probability = 0.10
@@ -80,10 +87,12 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.action_rate = -0.05
         scales.head_pose_tracking = 0.0
         scales.head_action_rate = -0.01
-    else:
+        scales.head_joint_vel = 0.0
+    elif stage == "control":
         config.forward_velocity_range_m_s = [0.04, 0.18]
         config.zero_command_probability = 0.20
         config.enable_head_command = True
+        config.head_zero_probability = 0.25
         scales.pose = 0.3
         scales.feet_air_time = 2.0
         scales.foot_clearance = -0.3
@@ -94,6 +103,26 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.action_rate = -0.1
         scales.head_pose_tracking = 1.0
         scales.head_action_rate = -0.02
+        scales.head_joint_vel = -0.01
+    else:
+        config.forward_velocity_range_m_s = [0.06, 0.18]
+        config.yaw_rate_range_rad_s = [-0.3, 0.3]
+        config.straight_command_probability = 0.30
+        config.zero_command_probability = 0.10
+        config.enable_head_command = True
+        config.head_zero_probability = 0.25
+        scales.pose = 0.3
+        scales.feet_air_time = 2.0
+        scales.foot_clearance = -0.3
+        scales.feet_height = -0.1
+        scales.foot_slip = -0.1
+        scales.body_ang_vel = -0.02
+        scales.yaw_rate = 0.0
+        scales.yaw_tracking = 2.0
+        scales.action_rate = -0.1
+        scales.head_pose_tracking = 1.0
+        scales.head_action_rate = -0.03
+        scales.head_joint_vel = -0.02
     config.reward_config.tracking_sigma = 0.01
     return config
 
@@ -156,19 +185,43 @@ class Walking(Standing):
             self.get_global_angvel(data)
         )
         rewards["yaw_rate"] = cost_yaw_rate(self.get_gyro(data))
+        rewards["yaw_tracking"] = reward_tracking_yaw_rate(
+            info["command"], self.get_gyro(data), 0.1, gravity,
+            self._config.upright_std,
+        )
+        locomotion_active = jp.linalg.norm(info["command"][:3]) > 0.01
         rewards["head_action_rate"] = cost_head_action_rate(
             action, info["last_act"]
-        )
+        ) * locomotion_active
+        rewards["head_joint_vel"] = cost_head_joint_velocity(
+            self.get_actuator_joints_qvel(data.qvel)
+        ) * locomotion_active
 
         return rewards
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
-        velocity_rng, zero_rng, head_rng = jax.random.split(rng, 3)
+        velocity_rng, yaw_rng, straight_rng, zero_rng, head_rng, head_zero_rng = (
+            jax.random.split(rng, 6)
+        )
         standing_command = super().sample_command(head_rng)
         standing_command = jp.where(
             self._config.enable_head_command,
             standing_command,
             jp.zeros_like(standing_command),
+        )
+        # Standing.sample_command already emits an all-zero command with
+        # zero_command_probability. Add only the residual probability needed
+        # to make head=HOME exactly head_zero_probability of moving samples.
+        existing_zero = self._config.zero_command_probability
+        residual_head_zero = jp.clip(
+            (self._config.head_zero_probability - existing_zero)
+            / jp.maximum(1.0 - existing_zero, 1.0e-6),
+            0.0,
+            1.0,
+        )
+        zero_head = jax.random.bernoulli(head_zero_rng, p=residual_head_zero)
+        standing_command = standing_command.at[3:].set(
+            jp.where(zero_head, 0.0, standing_command[3:])
         )
         forward_velocity = jax.random.uniform(
             velocity_rng,
@@ -176,6 +229,19 @@ class Walking(Standing):
             maxval=self._config.forward_velocity_range_m_s[1],
         )
         command = standing_command.at[0].set(forward_velocity)
+        yaw_rate = jax.random.uniform(
+            yaw_rng,
+            minval=self._config.yaw_rate_range_rad_s[0],
+            maxval=self._config.yaw_rate_range_rad_s[1],
+        )
+        yaw_rate = jp.where(
+            jax.random.bernoulli(
+                straight_rng, p=self._config.straight_command_probability
+            ),
+            0.0,
+            yaw_rate,
+        )
+        command = command.at[2].set(yaw_rate)
         return jp.where(
             jax.random.bernoulli(
                 zero_rng, p=self._config.zero_command_probability

@@ -31,6 +31,19 @@ def reward_tracking_ang_vel(
     return jp.nan_to_num(jp.exp(-ang_vel_error / tracking_sigma))
 
 
+def reward_tracking_yaw_rate(
+    commands: jax.Array,
+    angular_velocity: jax.Array,
+    tracking_sigma: float,
+    torso_zaxis: jax.Array,
+    upright_std: float,
+) -> jax.Array:
+    """Track commanded yaw rate while retaining the upright requirement."""
+    error = jp.square(commands[2] - angular_velocity[2])
+    tracking = jp.exp(-error / tracking_sigma)
+    return jp.nan_to_num(tracking * reward_upright(torso_zaxis, upright_std))
+
+
 # Base-related rewards.
 
 
@@ -129,6 +142,11 @@ def cost_action_rate(act: jax.Array, last_act: jax.Array) -> jax.Array:
 def cost_head_action_rate(act: jax.Array, last_act: jax.Array) -> jax.Array:
     """Action-rate cost for the four neck/head actuators only."""
     return jp.nan_to_num(jp.sum(jp.square(act[5:9] - last_act[5:9])))
+
+
+def cost_head_joint_velocity(joint_velocity: jax.Array) -> jax.Array:
+    """Penalize physical neck/head joint motion."""
+    return jp.nan_to_num(jp.sum(jp.square(joint_velocity[5:9])))
 
 
 # Other rewards.

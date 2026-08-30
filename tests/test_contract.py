@@ -12,6 +12,7 @@ from playground.nubzuki.controller import (
     apply_deadzone,
     axes_to_head_targets,
     forward_velocity_command,
+    yaw_rate_command,
 )
 from playground.nubzuki.cli import build_parser
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
@@ -79,9 +80,43 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(control.reward_config.scales.yaw_rate, -0.1)
         self.assertEqual(refine.reward_config.scales.head_action_rate, -0.01)
         self.assertEqual(control.reward_config.scales.head_action_rate, -0.02)
+        self.assertEqual(control.reward_config.scales.head_joint_vel, -0.005)
         self.assertTrue(control.enable_head_command)
+        self.assertEqual(control.head_zero_probability, 0.25)
         self.assertGreater(control.reward_config.scales.head_pose_tracking, 0.0)
         self.assertEqual(control.zero_command_probability, 0.20)
+        control_env = Walking(config=control)
+        commands = np.asarray(
+            jax.vmap(control_env.sample_command)(
+                jax.random.split(jax.random.PRNGKey(19), 4096)
+            )
+        )
+        moving = np.linalg.norm(commands[:, :3], axis=1) > 0.01
+        head_at_home = np.all(commands[:, 3:] == 0.0, axis=1)
+        self.assertAlmostEqual(np.mean(head_at_home[moving]), 0.25, delta=0.03)
+
+        turning = walking_config("turning")
+        self.assertEqual(turning.yaw_rate_range_rad_s, [-0.3, 0.3])
+        self.assertEqual(turning.reward_config.scales.yaw_rate, 0.0)
+        self.assertEqual(turning.reward_config.scales.yaw_tracking, 2.0)
+        self.assertEqual(turning.reward_config.scales.head_action_rate, -0.03)
+        self.assertEqual(turning.reward_config.scales.head_joint_vel, -0.01)
+        self.assertEqual(turning.head_zero_probability, 0.25)
+
+    def test_turning_maps_right_stick_to_yaw_rate(self):
+        metadata = {
+            "policy": "walking",
+            "yaw_rate_range_rad_s": [-0.3, 0.3],
+        }
+        self.assertAlmostEqual(
+            yaw_rate_command({"right_x": 1.0}, "walk", metadata), 0.3
+        )
+        self.assertAlmostEqual(
+            yaw_rate_command({"right_x": -1.0}, "walk", metadata), -0.3
+        )
+        self.assertEqual(
+            yaw_rate_command({"right_x": 1.0}, "head", metadata), 0.0
+        )
 
     def test_walk_mode_maps_only_forward_stick(self):
         metadata = {

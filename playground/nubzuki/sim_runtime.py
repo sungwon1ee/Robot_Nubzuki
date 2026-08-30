@@ -11,7 +11,11 @@ import numpy as np
 
 from playground.nubzuki import constants
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
-from playground.nubzuki.controller import axes_to_head_targets, forward_velocity_command
+from playground.nubzuki.controller import (
+    axes_to_head_targets,
+    forward_velocity_command,
+    yaw_rate_command,
+)
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
 from playground.nubzuki.policy import ObservationBuilder, StandingPolicy
 
@@ -107,8 +111,9 @@ def run_simulation(
                 desired = axes_to_head_targets(head_axes, calibration, profile)
                 head = limiter.step(desired)
                 forward = forward_velocity_command(axes, mode, policy.metadata)
+                yaw_rate = yaw_rate_command(axes, mode, policy.metadata)
                 command = np.asarray(
-                    [forward, 0.0, 0.0] + [head[name] for name in HEAD_JOINTS]
+                    [forward, 0.0, yaw_rate] + [head[name] for name in HEAD_JOINTS]
                 )
                 qpos = np.asarray(data.qpos[qpos_addresses])
                 qvel = np.asarray(data.qvel[qvel_addresses])
