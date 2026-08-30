@@ -46,6 +46,12 @@ def cost_orientation(torso_zaxis: jax.Array) -> jax.Array:
     return jp.nan_to_num(jp.sum(jp.square(torso_zaxis[:2])))
 
 
+def reward_upright(torso_zaxis: jax.Array, std: float) -> jax.Array:
+    """Microduck-style Gaussian reward for keeping the trunk vertical."""
+    tilt_error = jp.sum(jp.square(torso_zaxis[:2]))
+    return jp.nan_to_num(jp.exp(-tilt_error / jp.square(std)))
+
+
 def cost_base_height(base_height: jax.Array, base_height_target: float) -> jax.Array:
     return jp.nan_to_num(jp.square(base_height - base_height_target))
 
@@ -191,11 +197,23 @@ def cost_feet_clearance(
 ) -> jax.Array:
     # feet_vel = data.sensordata[self._foot_linvel_sensor_adr]
     vel_xy = feet_vel[..., :2]
-    vel_norm = jp.sqrt(jp.linalg.norm(vel_xy, axis=-1))
+    vel_norm = jp.linalg.norm(vel_xy, axis=-1)
     # foot_pos = data.site_xpos[self._feet_site_id]
     foot_z = foot_pos[..., -1]
     delta = jp.abs(foot_z - max_foot_height)
     return jp.nan_to_num(jp.sum(delta * vel_norm))
+
+
+def cost_feet_slip_contact(
+    feet_vel: jax.Array,
+    contact: jax.Array,
+    commands: jax.Array,
+    command_threshold: float = 0.01,
+) -> jax.Array:
+    """Microduck-style squared horizontal foot speed while in contact."""
+    speed_sq = jp.sum(jp.square(feet_vel[..., :2]), axis=-1)
+    active = jp.linalg.norm(commands[:3]) > command_threshold
+    return jp.nan_to_num(jp.sum(speed_sq * contact) * active)
 
 
 # FIXME
@@ -224,6 +242,47 @@ def reward_feet_air_time(
     return jp.nan_to_num(reward)
 
 
+def reward_feet_air_time_window(
+    air_time: jax.Array,
+    commands: jax.Array,
+    threshold_min: float = 0.125,
+    threshold_max: float = 0.30,
+    command_threshold: float = 0.01,
+) -> jax.Array:
+    """Microduck's per-step reward for feet in the desired air-time window."""
+    in_range = (air_time > threshold_min) & (air_time < threshold_max)
+    active = jp.linalg.norm(commands[:3]) > command_threshold
+    return jp.nan_to_num(jp.sum(in_range.astype(jp.float32)) * active)
+
+
+def reward_variable_posture(
+    qpos: jax.Array,
+    default_pose: jax.Array,
+    commands: jax.Array,
+    standing_std: jax.Array,
+    walking_std: jax.Array,
+    command_threshold: float = 0.01,
+) -> jax.Array:
+    """Microduck-style Gaussian nominal-pose reward on the ten leg joints."""
+    leg_ids = jp.array([0, 1, 2, 3, 4, 9, 10, 11, 12, 13])
+    std = jp.where(
+        jp.linalg.norm(commands[:3]) < command_threshold,
+        standing_std,
+        walking_std,
+    )
+    error_sq = jp.square(qpos[leg_ids] - default_pose[leg_ids])
+    return jp.nan_to_num(jp.exp(-jp.mean(error_sq / jp.square(std))))
+
+
+def reward_pose_tracking(
+    qpos: jax.Array,
+    target: jax.Array,
+    std: float,
+) -> jax.Array:
+    """Mean per-joint Gaussian pose tracking, matching Microduck head control."""
+    return jp.nan_to_num(jp.mean(jp.exp(-jp.square(qpos - target) / jp.square(std))))
+
+
 # FIXME
 def reward_feet_phase(
     foot_pos: jax.Array,
@@ -239,4 +298,3 @@ def reward_feet_phase(
     # cmd_norm = jp.linalg.norm(commands)
     # reward *= cmd_norm > 0.1  # No reward for zero commands.
     return jp.nan_to_num(reward)
-
