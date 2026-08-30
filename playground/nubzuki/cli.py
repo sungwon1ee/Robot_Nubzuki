@@ -37,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
             "discovery", "refine", "control", "turning",
             "microduck_0", "microduck_1", "microduck_2",
             "microduck_3", "microduck_4", "microduck_5",
+            "microduck_auto",
         ),
         default="discovery",
         help="walking curriculum stage; ignored by the standing environment",

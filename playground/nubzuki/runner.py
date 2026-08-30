@@ -8,17 +8,30 @@ from pathlib import Path
 from playground.common.runner import BaseRunner
 from playground.nubzuki import randomize
 from playground.nubzuki.calibration import NubzukiCalibration
+from playground.nubzuki.resume import resolve_restore
 from playground.nubzuki.standing import Standing, default_config
-from playground.nubzuki.walking import Walking, default_config as walking_config
+from playground.nubzuki.walking import (
+    MICRODUCK_STAGE_INTERVAL,
+    Walking,
+    default_config as walking_config,
+    microduck_stage_for_step,
+)
 
 
 class NubzukiStandingRunner(BaseRunner):
     def __init__(self, args):
         super().__init__(args)
-        calibration = NubzukiCalibration(args.calibration)
-        policy_kind = getattr(args, "env", "standing")
+        self.calibration = NubzukiCalibration(args.calibration)
+        self.policy_kind = getattr(args, "env", "standing")
+        requested_stage = getattr(args, "walk_stage", "discovery")
+        initial_stage = "microduck_0" if requested_stage == "microduck_auto" else requested_stage
+        self._configure_environment(initial_stage)
+
+    def _configure_environment(self, walking_stage: str) -> None:
+        calibration = self.calibration
+        policy_kind = self.policy_kind
         if policy_kind == "walking":
-            config = walking_config(getattr(args, "walk_stage", "discovery"))
+            config = walking_config(walking_stage)
             environment = Walking
         else:
             config = default_config()
@@ -35,7 +48,7 @@ class NubzukiStandingRunner(BaseRunner):
         self.policy_metadata = {
             "schema_version": 2, "robot": "nubzuki", "policy": policy_kind,
             "model_semantics_version": 6,
-            "deployable": args.preset != "smoke",
+            "deployable": self.args.preset != "smoke",
             "upstream_commit": "ba59de88ab76163f2e0c2c95b4cd45fea5745106",
             "calibration_sha256": calibration.sha256,
             "observation_size": self.obs_size,
@@ -70,3 +83,38 @@ class NubzukiStandingRunner(BaseRunner):
             from playground.nubzuki.head_dynamics import HeadDynamicsProfile
             profile = HeadDynamicsProfile.load(profile_path, calibration)
             self.policy_metadata["head_dynamics_sha256"] = profile.sha256
+
+    def train(self) -> None:
+        if not (
+            self.policy_kind == "walking"
+            and getattr(self.args, "walk_stage", None) == "microduck_auto"
+        ):
+            super().train()
+            return
+
+        final_target = int(self.args.num_timesteps)
+        _, offset = resolve_restore(
+            getattr(self.args, "restore", None),
+            self.output_dir,
+            getattr(self.args, "step_offset", None),
+        )
+        while offset < final_target:
+            stage = microduck_stage_for_step(offset)
+            stage_index = int(stage.rsplit("_", 1)[1])
+            stage_target = (
+                final_target
+                if stage_index == 5
+                else min(final_target, (stage_index + 1) * MICRODUCK_STAGE_INTERVAL)
+            )
+            print(
+                f"Automatic walking curriculum: {stage} from "
+                f"{offset:,} to {stage_target:,} steps."
+            )
+            self._configure_environment(stage)
+            self.args.num_timesteps = stage_target
+            super().train()
+            self.args.restore = "auto"
+            self.args.step_offset = None
+            _, offset = resolve_restore("auto", self.output_dir)
+
+        self.args.num_timesteps = final_target

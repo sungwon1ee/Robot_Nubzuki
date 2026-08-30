@@ -24,6 +24,7 @@ from playground.nubzuki.walking import (
     MICRODUCK_STAGES,
     Walking,
     default_config as walking_config,
+    microduck_stage_for_step,
 )
 
 
@@ -183,6 +184,14 @@ class StandingContractTests(unittest.TestCase):
             (commands[:, 0] == 0.0) & (np.abs(commands[:, 2]) > 0.05)
         )
         self.assertGreater(np.mean(turn_in_place), 0.05)
+
+    def test_microduck_auto_stage_changes_every_20m_and_caps_at_final(self):
+        self.assertEqual(microduck_stage_for_step(0), "microduck_0")
+        self.assertEqual(microduck_stage_for_step(19_999_999), "microduck_0")
+        self.assertEqual(microduck_stage_for_step(20_000_000), "microduck_1")
+        self.assertEqual(microduck_stage_for_step(99_999_999), "microduck_4")
+        self.assertEqual(microduck_stage_for_step(100_000_000), "microduck_5")
+        self.assertEqual(microduck_stage_for_step(500_000_000), "microduck_5")
 
     def test_walk_mode_maps_only_forward_stick(self):
         metadata = {

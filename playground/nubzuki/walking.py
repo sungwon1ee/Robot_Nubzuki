@@ -29,9 +29,16 @@ from playground.nubzuki.standing import Standing, default_config as standing_con
 
 
 MICRODUCK_STAGES = tuple(f"microduck_{index}" for index in range(6))
+MICRODUCK_STAGE_INTERVAL = 20_000_000
 WALKING_STAGES = (
     "discovery", "refine", "control", "turning", *MICRODUCK_STAGES,
 )
+
+
+def microduck_stage_for_step(step: int) -> str:
+    """Select the 20M-step automatic curriculum stage for an absolute step."""
+    index = min(max(int(step), 0) // MICRODUCK_STAGE_INTERVAL, 5)
+    return MICRODUCK_STAGES[index]
 
 
 def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
