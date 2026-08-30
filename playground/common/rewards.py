@@ -126,6 +126,11 @@ def cost_action_rate(act: jax.Array, last_act: jax.Array) -> jax.Array:
     return c1
 
 
+def cost_head_action_rate(act: jax.Array, last_act: jax.Array) -> jax.Array:
+    """Action-rate cost for the four neck/head actuators only."""
+    return jp.nan_to_num(jp.sum(jp.square(act[5:9] - last_act[5:9])))
+
+
 # Other rewards.
 
 
