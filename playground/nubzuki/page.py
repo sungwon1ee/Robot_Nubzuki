@@ -100,8 +100,8 @@ const modeButton=document.getElementById('mode');
 function renderMode(){
   const head=state.mode==='head';
   modeButton.textContent=head?'MODE · HEAD':'MODE · WALK';
-  document.querySelector('#left .name').textContent=head?'HEAD YAW / PITCH':'STRAFE / FORWARD';
-  document.querySelector('#right .name').textContent=head?'HEAD ROLL / NECK PITCH':'TURN / UNUSED';
+  document.querySelector('#left .name').textContent=head?'HEAD YAW / PITCH':'TURN / FORWARD·BACK';
+  document.querySelector('#right .name').textContent=head?'HEAD ROLL / NECK PITCH':'UNUSED';
   document.getElementById('opts').hidden=!head;
   centreLeft();centreRight();
 }

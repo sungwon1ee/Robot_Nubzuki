@@ -24,22 +24,25 @@ def scale_axis(value: float, limits: tuple[float, float]) -> float:
 def forward_velocity_command(
     axes: dict[str, float], mode: str, policy_metadata: dict
 ) -> float:
-    """Map stick-up to forward velocity for the forward/stop walking policy."""
+    """Map left-stick vertical motion to signed forward velocity."""
     if mode != "walk" or policy_metadata.get("policy") != "walking":
         return 0.0
     limits = policy_metadata.get("forward_velocity_range_m_s", [0.03, 0.15])
-    stick = max(apply_deadzone(axes.get("left_y", 0.0), 0.1), 0.0)
-    return stick * float(limits[1])
+    stick = apply_deadzone(axes.get("left_y", 0.0), 0.1)
+    low, high = float(limits[0]), float(limits[1])
+    if low >= 0.0:
+        return max(stick, 0.0) * high
+    return scale_axis(stick, (low, high))
 
 
 def yaw_rate_command(
     axes: dict[str, float], mode: str, policy_metadata: dict
 ) -> float:
-    """Map right-stick horizontal motion to a trained yaw-rate command."""
+    """Map left-stick horizontal motion to a trained yaw-rate command."""
     if mode != "walk" or policy_metadata.get("policy") != "walking":
         return 0.0
     low, high = policy_metadata.get("yaw_rate_range_rad_s", [0.0, 0.0])
-    stick = apply_deadzone(axes.get("right_x", 0.0), 0.1)
+    stick = apply_deadzone(axes.get("left_x", 0.0), 0.1)
     return scale_axis(stick, (float(low), float(high)))
 
 

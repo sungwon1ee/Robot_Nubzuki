@@ -80,11 +80,13 @@ def reward_forward_walking_composite(
 ) -> jax.Array:
     """Forward progress × velocity tracking × upright, zero at no movement."""
     target = commands[0]
-    moving_command = target > command_threshold
-    safe_target = jp.maximum(target, command_threshold)
+    moving_command = jp.abs(target) > command_threshold
+    safe_target_magnitude = jp.maximum(jp.abs(target), command_threshold)
     velocity_error = jp.square(local_vel[0] - target) + jp.square(local_vel[1])
     tracking = jp.exp(-velocity_error / tracking_sigma)
-    movement = jp.clip(local_vel[0] / safe_target, 0.0, 1.0)
+    movement = jp.clip(
+        local_vel[0] * jp.sign(target) / safe_target_magnitude, 0.0, 1.0
+    )
     upright = reward_upright(torso_zaxis, upright_std)
     return jp.nan_to_num(tracking * movement * upright * moving_command)
 

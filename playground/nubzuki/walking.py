@@ -28,7 +28,10 @@ from playground.common.rewards import (
 from playground.nubzuki.standing import Standing, default_config as standing_config
 
 
-WALKING_STAGES = ("discovery", "refine", "control", "turning")
+MICRODUCK_STAGES = tuple(f"microduck_{index}" for index in range(6))
+WALKING_STAGES = (
+    "discovery", "refine", "control", "turning", *MICRODUCK_STAGES,
+)
 
 
 def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
@@ -56,6 +59,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     scales.walking_task = 5.0
     scales.standing_task = 2.0
     scales.yaw_tracking = 0.0
+    scales.straight_yaw_rate = 0.0
     scales.head_roll_home = 0.0
     scales.head_roll_vel = 0.0
     config.yaw_rate_range_rad_s = [0.0, 0.0]
@@ -65,7 +69,43 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     config.head_mode_probability = 0.0
     config.head_zero_probability = 1.0
 
-    if stage == "discovery":
+    if stage in MICRODUCK_STAGES:
+        stage_index = MICRODUCK_STAGES.index(stage)
+        # Microduck-style velocity curriculum: every command input is alive
+        # from the first update.  Only the standing fraction, head range and
+        # smoothness tax ramp as the gait consolidates.
+        standing_fractions = (0.02, 0.05, 0.10, 0.15, 0.20, 0.25)
+        head_range_factors = (0.05, 0.15, 0.35, 0.65, 1.00, 1.00)
+        action_rate_weights = (-0.10, -0.20, -0.40, -0.60, -0.80, -1.00)
+        standing_fraction = standing_fractions[stage_index]
+
+        config.forward_velocity_range_m_s = [-0.18, 0.18]
+        config.yaw_rate_range_rad_s = [-0.5, 0.5]
+        config.yaw_tracking_sigma = 0.1
+        config.straight_command_probability = 0.30
+        config.turn_in_place_probability = 0.15
+        config.enable_head_command = True
+        config.head_mode_probability = standing_fraction
+        config.head_zero_probability = 0.25
+        config.zero_command_probability = standing_fraction * 0.25
+        config.head_range_factor = head_range_factors[stage_index]
+
+        scales.pose = 0.3
+        scales.feet_air_time = 2.5
+        scales.foot_clearance = -0.1
+        scales.feet_height = -0.05
+        scales.foot_slip = -0.1
+        scales.body_ang_vel = -0.02
+        scales.yaw_rate = 0.0
+        scales.yaw_tracking = 5.0
+        scales.straight_yaw_rate = -0.1
+        scales.action_rate = action_rate_weights[stage_index]
+        scales.head_pose_tracking = 1.0
+        scales.head_action_rate = -0.02
+        scales.head_joint_vel = -0.01
+        scales.head_roll_home = -10.0
+        scales.head_roll_vel = -0.2
+    elif stage == "discovery":
         config.forward_velocity_range_m_s = [0.15, 0.15]
         config.zero_command_probability = 0.05
         config.enable_head_command = False
@@ -118,11 +158,11 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         config.forward_velocity_range_m_s = [0.06, 0.18]
         config.yaw_rate_range_rad_s = [-0.3, 0.3]
         config.yaw_tracking_sigma = 0.04
-        config.straight_command_probability = 0.30
-        config.turn_in_place_probability = 0.20
+        config.straight_command_probability = 0.50
+        config.turn_in_place_probability = 0.0
         config.zero_command_probability = 0.25 * 0.25
         config.enable_head_command = True
-        config.head_mode_probability = 0.25
+        config.head_mode_probability = 0.30
         config.head_zero_probability = 0.25
         scales.pose = 0.3
         scales.feet_air_time = 2.0
@@ -132,12 +172,13 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.body_ang_vel = -0.02
         scales.yaw_rate = 0.0
         scales.yaw_tracking = 5.0
+        scales.straight_yaw_rate = -0.1
         scales.action_rate = -0.1
         scales.head_pose_tracking = 1.0
         scales.head_action_rate = -0.03
         scales.head_joint_vel = -0.02
-        scales.head_roll_home = -5.0
-        scales.head_roll_vel = -0.1
+        scales.head_roll_home = -10.0
+        scales.head_roll_vel = -0.2
     config.reward_config.tracking_sigma = 0.01
     return config
 
@@ -200,11 +241,19 @@ class Walking(Standing):
             self.get_global_angvel(data)
         )
         rewards["yaw_rate"] = cost_yaw_rate(self.get_gyro(data))
+        turning_command = jp.abs(info["command"][2]) > 0.05
         rewards["yaw_tracking"] = reward_tracking_yaw_rate(
             info["command"], self.get_gyro(data),
             self._config.yaw_tracking_sigma, gravity,
             self._config.upright_std,
+        ) * turning_command
+        straight_command = (
+            (info["command"][0] > 0.01)
+            & (jp.abs(info["command"][2]) < 0.01)
         )
+        rewards["straight_yaw_rate"] = cost_yaw_rate(
+            self.get_gyro(data)
+        ) * straight_command
         locomotion_active = jp.linalg.norm(info["command"][:3]) > 0.01
         rewards["head_action_rate"] = cost_head_action_rate(
             action, info["last_act"]

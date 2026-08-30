@@ -20,7 +20,11 @@ from playground.nubzuki.policy import ObservationBuilder
 from playground.nubzuki.ppo_config import training_config
 from playground.nubzuki.robot_runtime import PARK_SPEED_FRACTION, park
 from playground.nubzuki.standing import _cost_negative_hip_roll, default_config
-from playground.nubzuki.walking import Walking, default_config as walking_config
+from playground.nubzuki.walking import (
+    MICRODUCK_STAGES,
+    Walking,
+    default_config as walking_config,
+)
 
 
 class RecordingHardware:
@@ -104,15 +108,17 @@ class StandingContractTests(unittest.TestCase):
         turning = walking_config("turning")
         self.assertEqual(turning.yaw_rate_range_rad_s, [-0.3, 0.3])
         self.assertEqual(turning.yaw_tracking_sigma, 0.04)
-        self.assertEqual(turning.turn_in_place_probability, 0.20)
+        self.assertEqual(turning.straight_command_probability, 0.50)
+        self.assertEqual(turning.turn_in_place_probability, 0.0)
         self.assertEqual(turning.reward_config.scales.yaw_rate, 0.0)
         self.assertEqual(turning.reward_config.scales.yaw_tracking, 5.0)
+        self.assertEqual(turning.reward_config.scales.straight_yaw_rate, -0.1)
         self.assertEqual(turning.reward_config.scales.head_action_rate, -0.03)
         self.assertEqual(turning.reward_config.scales.head_joint_vel, -0.02)
-        self.assertEqual(turning.reward_config.scales.head_roll_home, -5.0)
-        self.assertEqual(turning.reward_config.scales.head_roll_vel, -0.1)
+        self.assertEqual(turning.reward_config.scales.head_roll_home, -10.0)
+        self.assertEqual(turning.reward_config.scales.head_roll_vel, -0.2)
         self.assertEqual(turning.head_zero_probability, 0.25)
-        self.assertEqual(turning.head_mode_probability, 0.25)
+        self.assertEqual(turning.head_mode_probability, 0.30)
         turning_env = Walking(config=turning)
         turning_commands = np.asarray(
             jax.vmap(turning_env.sample_command)(
@@ -123,24 +129,60 @@ class StandingContractTests(unittest.TestCase):
             (turning_commands[:, 0] == 0.0)
             & (np.abs(turning_commands[:, 2]) > 0.01)
         )
-        self.assertGreater(np.mean(turn_in_place), 0.08)
+        self.assertFalse(np.any(turn_in_place))
         self.assertTrue(np.any(turning_commands[:, 2] > 0.01))
         self.assertTrue(np.any(turning_commands[:, 2] < -0.01))
 
-    def test_turning_maps_right_stick_to_yaw_rate(self):
+    def test_turning_maps_left_stick_to_yaw_rate(self):
         metadata = {
             "policy": "walking",
             "yaw_rate_range_rad_s": [-0.3, 0.3],
         }
         self.assertAlmostEqual(
-            yaw_rate_command({"right_x": 1.0}, "walk", metadata), 0.3
+            yaw_rate_command({"left_x": 1.0}, "walk", metadata), 0.3
         )
         self.assertAlmostEqual(
-            yaw_rate_command({"right_x": -1.0}, "walk", metadata), -0.3
+            yaw_rate_command({"left_x": -1.0}, "walk", metadata), -0.3
         )
         self.assertEqual(
-            yaw_rate_command({"right_x": 1.0}, "head", metadata), 0.0
+            yaw_rate_command({"left_x": 1.0}, "head", metadata), 0.0
         )
+
+    def test_microduck_curriculum_keeps_all_skills_alive_and_ramps_taxes(self):
+        configs = [walking_config(stage) for stage in MICRODUCK_STAGES]
+        self.assertEqual(
+            [config.head_mode_probability for config in configs],
+            [0.02, 0.05, 0.10, 0.15, 0.20, 0.25],
+        )
+        self.assertEqual(
+            [config.head_range_factor for config in configs],
+            [0.05, 0.15, 0.35, 0.65, 1.0, 1.0],
+        )
+        self.assertEqual(
+            [config.reward_config.scales.action_rate for config in configs],
+            [-0.1, -0.2, -0.4, -0.6, -0.8, -1.0],
+        )
+        for config in configs:
+            self.assertEqual(config.forward_velocity_range_m_s, [-0.18, 0.18])
+            self.assertEqual(config.yaw_rate_range_rad_s, [-0.5, 0.5])
+            self.assertEqual(config.turn_in_place_probability, 0.15)
+            self.assertTrue(config.enable_head_command)
+
+        env = Walking(config=configs[0])
+        commands = np.asarray(
+            jax.vmap(env.sample_command)(
+                jax.random.split(jax.random.PRNGKey(29), 8192)
+            )
+        )
+        self.assertTrue(np.any(commands[:, 0] > 0.01))
+        self.assertTrue(np.any(commands[:, 0] < -0.01))
+        self.assertTrue(np.any(commands[:, 2] > 0.05))
+        self.assertTrue(np.any(commands[:, 2] < -0.05))
+        self.assertTrue(np.any(np.abs(commands[:, 3:6]) > 1.0e-4))
+        turn_in_place = (
+            (commands[:, 0] == 0.0) & (np.abs(commands[:, 2]) > 0.05)
+        )
+        self.assertGreater(np.mean(turn_in_place), 0.05)
 
     def test_walk_mode_maps_only_forward_stick(self):
         metadata = {
@@ -158,6 +200,14 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(
             forward_velocity_command({"left_y": 1.0}, "head", metadata),
             0.0,
+        )
+        signed_metadata = {
+            "policy": "walking",
+            "forward_velocity_range_m_s": [-0.18, 0.18],
+        }
+        self.assertAlmostEqual(
+            forward_velocity_command({"left_y": -1.0}, "walk", signed_metadata),
+            -0.18,
         )
 
     def test_zero_command_and_head_tracking_are_prioritized(self):

@@ -32,7 +32,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="train standing or the forward/stop walking task",
     )
     train.add_argument(
-        "--walk-stage", choices=("discovery", "refine", "control", "turning"),
+        "--walk-stage",
+        choices=(
+            "discovery", "refine", "control", "turning",
+            "microduck_0", "microduck_1", "microduck_2",
+            "microduck_3", "microduck_4", "microduck_5",
+        ),
         default="discovery",
         help="walking curriculum stage; ignored by the standing environment",
     )
