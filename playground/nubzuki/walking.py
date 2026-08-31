@@ -62,6 +62,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     scales.head_roll_home = 0.0
     scales.head_roll_vel = 0.0
     config.yaw_rate_range_rad_s = [0.0, 0.0]
+    config.min_turn_yaw_rate_rad_s = 0.0
     config.yaw_tracking_sigma = 0.1
     config.straight_command_probability = 1.0
     config.turn_in_place_probability = 0.0
@@ -73,9 +74,10 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         # plus curved left/right turns.  Head commands, reverse and in-place
         # turns are deliberately absent until locomotion is robust on video.
         config.forward_velocity_range_m_s = [0.04, 0.18]
-        config.yaw_rate_range_rad_s = [-0.50, 0.50]
+        config.yaw_rate_range_rad_s = [-0.70, 0.70]
+        config.min_turn_yaw_rate_rad_s = 0.15
         config.yaw_tracking_sigma = 0.1
-        config.straight_command_probability = 0.30
+        config.straight_command_probability = 0.20
         config.turn_in_place_probability = 0.0
         config.zero_command_probability = 0.20
         config.enable_head_command = False
@@ -321,6 +323,12 @@ class Walking(Standing):
             yaw_rng,
             minval=self._config.yaw_rate_range_rad_s[0],
             maxval=self._config.yaw_rate_range_rad_s[1],
+        )
+        min_turn_rate = self._config.min_turn_yaw_rate_rad_s
+        yaw_rate = jp.where(
+            jp.abs(yaw_rate) < min_turn_rate,
+            jp.where(yaw_rate >= 0.0, min_turn_rate, -min_turn_rate),
+            yaw_rate,
         )
         yaw_rate = jp.where(
             jax.random.bernoulli(
