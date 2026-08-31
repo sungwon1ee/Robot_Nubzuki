@@ -12,6 +12,7 @@ from playground.nubzuki.controller import (
     XboxController,
     axes_to_head_targets,
     forward_velocity_command,
+    head_axes_for_mode,
     yaw_rate_command,
 )
 from playground.nubzuki.hardware import ServoHardware
@@ -129,7 +130,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 )
                 link_lost = True
             mode = controller.mode()
-            head_axes = axes if mode == "head" else {name: 0.0 for name in axes}
+            head_axes = head_axes_for_mode(axes, mode)
             raw_targets = axes_to_head_targets(head_axes, calibration, profile)
             head_targets = limiter.step(raw_targets)
             forward = (

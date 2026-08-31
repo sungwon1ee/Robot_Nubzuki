@@ -36,8 +36,13 @@ class PhoneControllerTests(unittest.TestCase):
         for axis in AXES:
             self.assertIn(axis, page)
         self.assertIn("border-radius:50%", page)
-        self.assertIn("MODE · HEAD", page)
-        self.assertIn("MODE · WALK", page)
+        self.assertIn("HEAD CONTROL", page)
+        self.assertIn("WALK + HEAD CONTROL", page)
+        self.assertIn("HEAD YAW / PITCH", page)
+        self.assertIn("user-scalable=yes", page)
+        self.assertIn("minimum-scale=.5", page)
+        self.assertIn("touch-action:pinch-zoom", page)
+        self.assertIn("dragstart", page)
         self.assertIn("시뮬레이터가 실행 중인지 확인", page)
         self.assertNotIn("__TARGET_LABEL__", page)
 
@@ -69,7 +74,7 @@ class PhoneControllerTests(unittest.TestCase):
         self.assertTrue(self.controller.fresh())
 
     def test_control_mode_is_validated(self):
-        self.assertEqual(self.controller.mode(), "head")
+        self.assertEqual(self.controller.mode(), "walk")
         post(self.url, {"mode": "walk"})
         self.assertEqual(self.controller.mode(), "walk")
         post(self.url, {"mode": "walk", "left_x": 1.0, "right_y": -1.0})
@@ -77,7 +82,7 @@ class PhoneControllerTests(unittest.TestCase):
         self.assertEqual(axes["left_x"], 1.0)
         self.assertEqual(axes["right_y"], -1.0)
         post(self.url, {"mode": "not-a-mode"})
-        self.assertEqual(self.controller.mode(), "head")
+        self.assertEqual(self.controller.mode(), "walk")
 
     def test_a_lost_connection_recentres_instead_of_holding_deflection(self):
         post(self.url, {"left_x": 1.0, "a": True})

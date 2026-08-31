@@ -46,6 +46,22 @@ def yaw_rate_command(
     return scale_axis(stick, (float(low), float(high)))
 
 
+def head_axes_for_mode(
+    axes: dict[str, float], mode: str
+) -> dict[str, float]:
+    """Route both sticks in head mode and right-stick yaw/pitch while walking."""
+    if mode == "head":
+        return dict(axes)
+    if mode == "walk":
+        return {
+            "left_x": axes.get("right_x", 0.0),
+            "left_y": axes.get("right_y", 0.0),
+            "right_x": 0.0,
+            "right_y": 0.0,
+        }
+    return {name: 0.0 for name in ("left_x", "left_y", "right_x", "right_y")}
+
+
 def axes_to_head_targets(
     axes: dict[str, float], calibration: NubzukiCalibration,
     profile: HeadDynamicsProfile,
@@ -76,7 +92,7 @@ class XboxController:
         self.timeout_s = float(timeout_s)
         self.last_read = time.monotonic()
         self.attached = True
-        self.control_mode = "head"
+        self.control_mode = "walk"
         self._y_was_pressed = False
 
     def read(self) -> tuple[dict[str, float], bool, bool]:

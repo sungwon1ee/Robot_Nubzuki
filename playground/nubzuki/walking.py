@@ -81,7 +81,9 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         # Microduck-style velocity curriculum: every command input is alive
         # from the first update.  Only the standing fraction, head range and
         # smoothness tax ramp as the gait consolidates.
-        standing_fractions = (0.02, 0.05, 0.10, 0.15, 0.20, 0.25)
+        # From 60M onward, keep head-only commands at a stable 20% instead of
+        # continuing to increase their share at the expense of walking.
+        standing_fractions = (0.02, 0.05, 0.10, 0.20, 0.20, 0.20)
         head_range_factors = (0.05, 0.15, 0.35, 0.65, 1.00, 1.00)
         action_rate_weights = (-0.10, -0.20, -0.40, -0.60, -0.80, -1.00)
         velocity_ranges = (
@@ -122,8 +124,10 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.head_pose_tracking = 1.0
         scales.head_action_rate = -0.02
         scales.head_joint_vel = -0.01
-        scales.head_roll_home = -10.0
-        scales.head_roll_vel = -0.2
+        # Do not pin head roll while walking.  The heavy home/velocity costs
+        # distorted the gait by making the legs compensate for a rigid head.
+        scales.head_roll_home = 0.0
+        scales.head_roll_vel = 0.0
     elif stage == "discovery":
         config.forward_velocity_range_m_s = [0.15, 0.15]
         config.zero_command_probability = 0.05
@@ -231,8 +235,17 @@ class Walking(Standing):
             jp.asarray(self._config.standing_leg_pose_std),
             jp.asarray(self._config.walking_leg_pose_std),
         )
-        rewards["head_pose_tracking"] = reward_pose_tracking(
-            joint_pos[5:9], info["command"][3:], std=0.5
+        locomotion_active = jp.linalg.norm(info["command"][:3]) > 0.01
+        # Walking controls yaw/pitch but leaves roll mechanically free.  Head
+        # mode still tracks all four joints, including roll and neck pitch.
+        rewards["head_pose_tracking"] = jp.where(
+            locomotion_active,
+            reward_pose_tracking(
+                joint_pos[5:8], info["command"][3:6], std=0.5
+            ),
+            reward_pose_tracking(
+                joint_pos[5:9], info["command"][3:], std=0.5
+            ),
         )
         feet_vel = data.sensordata[self._foot_linvel_sensor_adr]
         feet_pos = data.site_xpos[self._feet_site_id]
@@ -273,7 +286,6 @@ class Walking(Standing):
         rewards["straight_yaw_rate"] = cost_yaw_rate(
             self.get_gyro(data)
         ) * straight_command
-        locomotion_active = jp.linalg.norm(info["command"][:3]) > 0.01
         rewards["head_action_rate"] = cost_head_action_rate(
             action, info["last_act"]
         ) * locomotion_active
@@ -355,8 +367,8 @@ class Walking(Standing):
         moving_command = moving_command.at[0].set(
             jp.where(turn_in_place, 0.0, moving_command[0])
         )
-        # Walk mode does not expose head-roll control.  Training it at a
-        # nonzero target only teaches the oscillation we are trying to remove.
+        # Walk mode does not expose head-roll control.  Its zero placeholder is
+        # ignored by head-pose tracking while moving, so roll remains free.
         moving_command = moving_command.at[6].set(0.0)
         head_mode_command = jp.hstack([jp.zeros(3), head_command])
         head_mode_command = jp.where(

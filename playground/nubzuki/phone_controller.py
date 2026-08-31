@@ -42,7 +42,7 @@ class PhoneController:
         self._axes = {name: 0.0 for name in AXES}
         self._a_pressed = False
         self._b_pressed = False
-        self.control_mode = "head"
+        self.control_mode = "walk"
         self._last_input = 0.0
         self._connected = False
         self.target_label = str(target_label)
@@ -96,8 +96,8 @@ class PhoneController:
             axes[name] = max(-1.0, min(1.0, value))
         with self._lock:
             self._axes = axes
-            mode = str(payload.get("mode", "head"))
-            self.control_mode = mode if mode in ("walk", "head") else "head"
+            mode = str(payload.get("mode", "walk"))
+            self.control_mode = mode if mode in ("walk", "head") else "walk"
             self._a_pressed = bool(payload.get("a", False))
             self._b_pressed = bool(payload.get("b", False))
             self._last_input = time.monotonic()

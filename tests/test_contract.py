@@ -12,6 +12,7 @@ from playground.nubzuki.controller import (
     apply_deadzone,
     axes_to_head_targets,
     forward_velocity_command,
+    head_axes_for_mode,
     yaw_rate_command,
 )
 from playground.nubzuki.cli import build_parser
@@ -149,11 +150,25 @@ class StandingContractTests(unittest.TestCase):
             yaw_rate_command({"left_x": 1.0}, "head", metadata), 0.0
         )
 
+    def test_walk_mode_routes_right_stick_to_head_yaw_and_pitch_only(self):
+        axes = {
+            "left_x": 0.8,
+            "left_y": 0.7,
+            "right_x": -0.4,
+            "right_y": 0.3,
+        }
+        routed = head_axes_for_mode(axes, "walk")
+        self.assertEqual(routed["left_x"], -0.4)
+        self.assertEqual(routed["left_y"], 0.3)
+        self.assertEqual(routed["right_x"], 0.0)
+        self.assertEqual(routed["right_y"], 0.0)
+        self.assertEqual(head_axes_for_mode(axes, "head"), axes)
+
     def test_microduck_curriculum_keeps_all_skills_alive_and_ramps_taxes(self):
         configs = [walking_config(stage) for stage in MICRODUCK_STAGES]
         self.assertEqual(
             [config.head_mode_probability for config in configs],
-            [0.02, 0.05, 0.10, 0.15, 0.20, 0.25],
+            [0.02, 0.05, 0.10, 0.20, 0.20, 0.20],
         )
         self.assertEqual(
             [config.head_range_factor for config in configs],
@@ -162,6 +177,14 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(
             [config.reward_config.scales.action_rate for config in configs],
             [-0.1, -0.2, -0.4, -0.6, -0.8, -1.0],
+        )
+        self.assertEqual(
+            [config.reward_config.scales.head_roll_home for config in configs],
+            [0.0] * 6,
+        )
+        self.assertEqual(
+            [config.reward_config.scales.head_roll_vel for config in configs],
+            [0.0] * 6,
         )
         self.assertEqual(
             [config.forward_velocity_range_m_s for config in configs],

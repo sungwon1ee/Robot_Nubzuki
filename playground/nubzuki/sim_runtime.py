@@ -14,6 +14,7 @@ from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
 from playground.nubzuki.controller import (
     axes_to_head_targets,
     forward_velocity_command,
+    head_axes_for_mode,
     yaw_rate_command,
 )
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
@@ -113,7 +114,7 @@ def run_simulation(
                     print("Controller connected.")
                     announced = True
                 mode = controller.mode()
-                head_axes = axes if mode == "head" else {name: 0.0 for name in axes}
+                head_axes = head_axes_for_mode(axes, mode)
                 desired = axes_to_head_targets(head_axes, calibration, profile)
                 head = limiter.step(desired)
                 forward = forward_velocity_command(axes, mode, policy.metadata)
