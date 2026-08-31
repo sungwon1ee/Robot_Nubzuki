@@ -8,13 +8,10 @@ from pathlib import Path
 from playground.common.runner import BaseRunner
 from playground.nubzuki import randomize
 from playground.nubzuki.calibration import NubzukiCalibration
-from playground.nubzuki.resume import resolve_restore
 from playground.nubzuki.standing import Standing, default_config
 from playground.nubzuki.walking import (
-    MICRODUCK_STAGE_INTERVAL,
     Walking,
     default_config as walking_config,
-    microduck_stage_for_step,
 )
 
 
@@ -24,8 +21,7 @@ class NubzukiStandingRunner(BaseRunner):
         self.calibration = NubzukiCalibration(args.calibration)
         self.policy_kind = getattr(args, "env", "standing")
         requested_stage = getattr(args, "walk_stage", "discovery")
-        initial_stage = "microduck_0" if requested_stage == "microduck_auto" else requested_stage
-        self._configure_environment(initial_stage)
+        self._configure_environment(requested_stage)
 
     def _configure_environment(self, walking_stage: str) -> None:
         calibration = self.calibration
@@ -83,38 +79,3 @@ class NubzukiStandingRunner(BaseRunner):
             from playground.nubzuki.head_dynamics import HeadDynamicsProfile
             profile = HeadDynamicsProfile.load(profile_path, calibration)
             self.policy_metadata["head_dynamics_sha256"] = profile.sha256
-
-    def train(self) -> None:
-        if not (
-            self.policy_kind == "walking"
-            and getattr(self.args, "walk_stage", None) == "microduck_auto"
-        ):
-            super().train()
-            return
-
-        final_target = int(self.args.num_timesteps)
-        _, offset = resolve_restore(
-            getattr(self.args, "restore", None),
-            self.output_dir,
-            getattr(self.args, "step_offset", None),
-        )
-        while offset < final_target:
-            stage = microduck_stage_for_step(offset)
-            stage_index = int(stage.rsplit("_", 1)[1])
-            stage_target = (
-                final_target
-                if stage_index == 5
-                else min(final_target, (stage_index + 1) * MICRODUCK_STAGE_INTERVAL)
-            )
-            print(
-                f"Automatic walking curriculum: {stage} from "
-                f"{offset:,} to {stage_target:,} steps."
-            )
-            self._configure_environment(stage)
-            self.args.num_timesteps = stage_target
-            super().train()
-            self.args.restore = "auto"
-            self.args.step_offset = None
-            _, offset = resolve_restore("auto", self.output_dir)
-
-        self.args.num_timesteps = final_target

@@ -28,17 +28,9 @@ from playground.common.rewards import (
 from playground.nubzuki.standing import Standing, default_config as standing_config
 
 
-MICRODUCK_STAGES = tuple(f"microduck_{index}" for index in range(6))
-MICRODUCK_STAGE_INTERVAL = 20_000_000
 WALKING_STAGES = (
-    "discovery", "refine", "control", "turning", *MICRODUCK_STAGES,
+    "discovery", "locomotion", "refine", "control", "turning",
 )
-
-
-def microduck_stage_for_step(step: int) -> str:
-    """Select the 20M-step automatic curriculum stage for an absolute step."""
-    index = min(max(int(step), 0) // MICRODUCK_STAGE_INTERVAL, 5)
-    return MICRODUCK_STAGES[index]
 
 
 def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
@@ -51,8 +43,8 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     config.standing_leg_pose_std = [0.10, 0.05, 0.15, 0.15, 0.10] * 2
     config.walking_leg_pose_std = [0.30, 0.05, 0.40, 0.40, 0.25] * 2
 
-    # Microduck velocity-task weights.  Keep action-rate at its gait-discovery
-    # value; Microduck only ramps it toward -1 after a gait already exists.
+    # Shared locomotion-task baseline.  Each explicit stage changes only the
+    # commands and regularizers needed for that skill.
     scales = config.reward_config.scales
     scales.orientation = 0.0
     scales.torques = 0.0
@@ -76,40 +68,19 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     config.head_mode_probability = 0.0
     config.head_zero_probability = 1.0
 
-    if stage in MICRODUCK_STAGES:
-        stage_index = MICRODUCK_STAGES.index(stage)
-        # Microduck-style velocity curriculum: every command input is alive
-        # from the first update.  Only the standing fraction, head range and
-        # smoothness tax ramp as the gait consolidates.
-        # From 60M onward, keep head-only commands at a stable 20% instead of
-        # continuing to increase their share at the expense of walking.
-        standing_fractions = (0.02, 0.05, 0.10, 0.20, 0.20, 0.20)
-        head_range_factors = (0.05, 0.15, 0.35, 0.65, 1.00, 1.00)
-        action_rate_weights = (-0.10, -0.20, -0.40, -0.60, -0.80, -1.00)
-        velocity_ranges = (
-            (0.04, 0.18),
-            (0.00, 0.18),
-            (-0.04, 0.18),
-            (-0.08, 0.18),
-            (-0.12, 0.18),
-            (-0.18, 0.18),
-        )
-        yaw_ranges = (0.30, 0.40, 0.50, 0.50, 0.50, 0.50)
-        straight_fractions = (0.50, 0.40, 0.30, 0.30, 0.30, 0.30)
-        turn_in_place_fractions = (0.00, 0.05, 0.10, 0.15, 0.15, 0.15)
-        standing_fraction = standing_fractions[stage_index]
-
-        config.forward_velocity_range_m_s = list(velocity_ranges[stage_index])
-        yaw_limit = yaw_ranges[stage_index]
-        config.yaw_rate_range_rad_s = [-yaw_limit, yaw_limit]
+    if stage == "locomotion":
+        # Continue from the best gait checkpoint and learn only forward motion
+        # plus curved left/right turns.  Head commands, reverse and in-place
+        # turns are deliberately absent until locomotion is robust on video.
+        config.forward_velocity_range_m_s = [0.04, 0.18]
+        config.yaw_rate_range_rad_s = [-0.30, 0.30]
         config.yaw_tracking_sigma = 0.1
-        config.straight_command_probability = straight_fractions[stage_index]
-        config.turn_in_place_probability = turn_in_place_fractions[stage_index]
-        config.enable_head_command = True
-        config.head_mode_probability = standing_fraction
-        config.head_zero_probability = 0.25
-        config.zero_command_probability = standing_fraction * 0.25
-        config.head_range_factor = head_range_factors[stage_index]
+        config.straight_command_probability = 0.50
+        config.turn_in_place_probability = 0.0
+        config.zero_command_probability = 0.0
+        config.enable_head_command = False
+        config.head_mode_probability = 0.0
+        config.head_zero_probability = 1.0
 
         scales.pose = 0.3
         scales.feet_air_time = 2.5
@@ -120,12 +91,10 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.yaw_rate = 0.0
         scales.yaw_tracking = 5.0
         scales.straight_yaw_rate = -0.1
-        scales.action_rate = action_rate_weights[stage_index]
-        scales.head_pose_tracking = 1.0
-        scales.head_action_rate = -0.02
-        scales.head_joint_vel = -0.01
-        # Do not pin head roll while walking.  The heavy home/velocity costs
-        # distorted the gait by making the legs compensate for a rigid head.
+        scales.action_rate = -0.1
+        scales.head_pose_tracking = 0.0
+        scales.head_action_rate = -0.01
+        scales.head_joint_vel = 0.0
         scales.head_roll_home = 0.0
         scales.head_roll_vel = 0.0
     elif stage == "discovery":

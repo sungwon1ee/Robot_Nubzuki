@@ -22,10 +22,8 @@ from playground.nubzuki.ppo_config import training_config
 from playground.nubzuki.robot_runtime import PARK_SPEED_FRACTION, park
 from playground.nubzuki.standing import _cost_negative_hip_roll, default_config
 from playground.nubzuki.walking import (
-    MICRODUCK_STAGES,
     Walking,
     default_config as walking_config,
-    microduck_stage_for_step,
 )
 
 
@@ -164,50 +162,19 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(routed["right_y"], 0.0)
         self.assertEqual(head_axes_for_mode(axes, "head"), axes)
 
-    def test_microduck_curriculum_keeps_all_skills_alive_and_ramps_taxes(self):
-        configs = [walking_config(stage) for stage in MICRODUCK_STAGES]
-        self.assertEqual(
-            [config.head_mode_probability for config in configs],
-            [0.02, 0.05, 0.10, 0.20, 0.20, 0.20],
-        )
-        self.assertEqual(
-            [config.head_range_factor for config in configs],
-            [0.05, 0.15, 0.35, 0.65, 1.0, 1.0],
-        )
-        self.assertEqual(
-            [config.reward_config.scales.action_rate for config in configs],
-            [-0.1, -0.2, -0.4, -0.6, -0.8, -1.0],
-        )
-        self.assertEqual(
-            [config.reward_config.scales.head_roll_home for config in configs],
-            [0.0] * 6,
-        )
-        self.assertEqual(
-            [config.reward_config.scales.head_roll_vel for config in configs],
-            [0.0] * 6,
-        )
-        self.assertEqual(
-            [config.forward_velocity_range_m_s for config in configs],
-            [
-                [0.04, 0.18], [0.0, 0.18], [-0.04, 0.18],
-                [-0.08, 0.18], [-0.12, 0.18], [-0.18, 0.18],
-            ],
-        )
-        self.assertEqual(
-            [config.yaw_rate_range_rad_s for config in configs],
-            [
-                [-0.3, 0.3], [-0.4, 0.4], [-0.5, 0.5],
-                [-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5],
-            ],
-        )
-        self.assertEqual(
-            [config.turn_in_place_probability for config in configs],
-            [0.0, 0.05, 0.10, 0.15, 0.15, 0.15],
-        )
-        for config in configs:
-            self.assertTrue(config.enable_head_command)
+    def test_locomotion_trains_forward_curves_without_head_commands(self):
+        config = walking_config("locomotion")
+        self.assertEqual(config.forward_velocity_range_m_s, [0.04, 0.18])
+        self.assertEqual(config.yaw_rate_range_rad_s, [-0.3, 0.3])
+        self.assertEqual(config.head_mode_probability, 0.0)
+        self.assertFalse(config.enable_head_command)
+        self.assertEqual(config.turn_in_place_probability, 0.0)
+        self.assertEqual(config.zero_command_probability, 0.0)
+        self.assertEqual(config.reward_config.scales.head_pose_tracking, 0.0)
+        self.assertEqual(config.reward_config.scales.head_roll_home, 0.0)
+        self.assertEqual(config.reward_config.scales.head_roll_vel, 0.0)
 
-        env = Walking(config=configs[0])
+        env = Walking(config=config)
         commands = np.asarray(
             jax.vmap(env.sample_command)(
                 jax.random.split(jax.random.PRNGKey(29), 8192)
@@ -217,19 +184,11 @@ class StandingContractTests(unittest.TestCase):
         self.assertFalse(np.any(commands[:, 0] < 0.0))
         self.assertTrue(np.any(commands[:, 2] > 0.05))
         self.assertTrue(np.any(commands[:, 2] < -0.05))
-        self.assertTrue(np.any(np.abs(commands[:, 3:6]) > 1.0e-4))
+        self.assertFalse(np.any(np.abs(commands[:, 3:]) > 1.0e-4))
         turn_in_place = (
             (commands[:, 0] == 0.0) & (np.abs(commands[:, 2]) > 0.05)
         )
         self.assertFalse(np.any(turn_in_place))
-
-    def test_microduck_auto_stage_changes_every_20m_and_caps_at_final(self):
-        self.assertEqual(microduck_stage_for_step(0), "microduck_0")
-        self.assertEqual(microduck_stage_for_step(19_999_999), "microduck_0")
-        self.assertEqual(microduck_stage_for_step(20_000_000), "microduck_1")
-        self.assertEqual(microduck_stage_for_step(99_999_999), "microduck_4")
-        self.assertEqual(microduck_stage_for_step(100_000_000), "microduck_5")
-        self.assertEqual(microduck_stage_for_step(500_000_000), "microduck_5")
 
     def test_walk_mode_maps_only_forward_stick(self):
         metadata = {
