@@ -73,11 +73,11 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         # plus curved left/right turns.  Head commands, reverse and in-place
         # turns are deliberately absent until locomotion is robust on video.
         config.forward_velocity_range_m_s = [0.04, 0.18]
-        config.yaw_rate_range_rad_s = [-0.30, 0.30]
+        config.yaw_rate_range_rad_s = [-0.50, 0.50]
         config.yaw_tracking_sigma = 0.1
-        config.straight_command_probability = 0.50
+        config.straight_command_probability = 0.30
         config.turn_in_place_probability = 0.0
-        config.zero_command_probability = 0.0
+        config.zero_command_probability = 0.20
         config.enable_head_command = False
         config.head_mode_probability = 0.0
         config.head_zero_probability = 1.0
@@ -91,7 +91,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.yaw_rate = 0.0
         scales.yaw_tracking = 5.0
         scales.straight_yaw_rate = -0.1
-        scales.action_rate = -0.1
+        scales.action_rate = -0.3
         scales.head_pose_tracking = 0.0
         scales.head_action_rate = -0.01
         scales.head_joint_vel = 0.0

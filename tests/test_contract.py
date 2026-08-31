@@ -165,11 +165,13 @@ class StandingContractTests(unittest.TestCase):
     def test_locomotion_trains_forward_curves_without_head_commands(self):
         config = walking_config("locomotion")
         self.assertEqual(config.forward_velocity_range_m_s, [0.04, 0.18])
-        self.assertEqual(config.yaw_rate_range_rad_s, [-0.3, 0.3])
+        self.assertEqual(config.yaw_rate_range_rad_s, [-0.5, 0.5])
+        self.assertEqual(config.straight_command_probability, 0.30)
         self.assertEqual(config.head_mode_probability, 0.0)
         self.assertFalse(config.enable_head_command)
         self.assertEqual(config.turn_in_place_probability, 0.0)
-        self.assertEqual(config.zero_command_probability, 0.0)
+        self.assertEqual(config.zero_command_probability, 0.20)
+        self.assertEqual(config.reward_config.scales.action_rate, -0.3)
         self.assertEqual(config.reward_config.scales.head_pose_tracking, 0.0)
         self.assertEqual(config.reward_config.scales.head_roll_home, 0.0)
         self.assertEqual(config.reward_config.scales.head_roll_vel, 0.0)
@@ -185,6 +187,8 @@ class StandingContractTests(unittest.TestCase):
         self.assertTrue(np.any(commands[:, 2] > 0.05))
         self.assertTrue(np.any(commands[:, 2] < -0.05))
         self.assertFalse(np.any(np.abs(commands[:, 3:]) > 1.0e-4))
+        stopped = np.linalg.norm(commands[:, :3], axis=1) < 1.0e-6
+        self.assertAlmostEqual(np.mean(stopped), 0.20, delta=0.03)
         turn_in_place = (
             (commands[:, 0] == 0.0) & (np.abs(commands[:, 2]) > 0.05)
         )
