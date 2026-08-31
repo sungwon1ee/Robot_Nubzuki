@@ -163,10 +163,25 @@ class StandingContractTests(unittest.TestCase):
             [config.reward_config.scales.action_rate for config in configs],
             [-0.1, -0.2, -0.4, -0.6, -0.8, -1.0],
         )
+        self.assertEqual(
+            [config.forward_velocity_range_m_s for config in configs],
+            [
+                [0.04, 0.18], [0.0, 0.18], [-0.04, 0.18],
+                [-0.08, 0.18], [-0.12, 0.18], [-0.18, 0.18],
+            ],
+        )
+        self.assertEqual(
+            [config.yaw_rate_range_rad_s for config in configs],
+            [
+                [-0.3, 0.3], [-0.4, 0.4], [-0.5, 0.5],
+                [-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5],
+            ],
+        )
+        self.assertEqual(
+            [config.turn_in_place_probability for config in configs],
+            [0.0, 0.05, 0.10, 0.15, 0.15, 0.15],
+        )
         for config in configs:
-            self.assertEqual(config.forward_velocity_range_m_s, [-0.18, 0.18])
-            self.assertEqual(config.yaw_rate_range_rad_s, [-0.5, 0.5])
-            self.assertEqual(config.turn_in_place_probability, 0.15)
             self.assertTrue(config.enable_head_command)
 
         env = Walking(config=configs[0])
@@ -176,14 +191,14 @@ class StandingContractTests(unittest.TestCase):
             )
         )
         self.assertTrue(np.any(commands[:, 0] > 0.01))
-        self.assertTrue(np.any(commands[:, 0] < -0.01))
+        self.assertFalse(np.any(commands[:, 0] < 0.0))
         self.assertTrue(np.any(commands[:, 2] > 0.05))
         self.assertTrue(np.any(commands[:, 2] < -0.05))
         self.assertTrue(np.any(np.abs(commands[:, 3:6]) > 1.0e-4))
         turn_in_place = (
             (commands[:, 0] == 0.0) & (np.abs(commands[:, 2]) > 0.05)
         )
-        self.assertGreater(np.mean(turn_in_place), 0.05)
+        self.assertFalse(np.any(turn_in_place))
 
     def test_microduck_auto_stage_changes_every_20m_and_caps_at_final(self):
         self.assertEqual(microduck_stage_for_step(0), "microduck_0")

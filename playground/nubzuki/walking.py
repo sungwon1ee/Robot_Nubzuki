@@ -84,13 +84,25 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         standing_fractions = (0.02, 0.05, 0.10, 0.15, 0.20, 0.25)
         head_range_factors = (0.05, 0.15, 0.35, 0.65, 1.00, 1.00)
         action_rate_weights = (-0.10, -0.20, -0.40, -0.60, -0.80, -1.00)
+        velocity_ranges = (
+            (0.04, 0.18),
+            (0.00, 0.18),
+            (-0.04, 0.18),
+            (-0.08, 0.18),
+            (-0.12, 0.18),
+            (-0.18, 0.18),
+        )
+        yaw_ranges = (0.30, 0.40, 0.50, 0.50, 0.50, 0.50)
+        straight_fractions = (0.50, 0.40, 0.30, 0.30, 0.30, 0.30)
+        turn_in_place_fractions = (0.00, 0.05, 0.10, 0.15, 0.15, 0.15)
         standing_fraction = standing_fractions[stage_index]
 
-        config.forward_velocity_range_m_s = [-0.18, 0.18]
-        config.yaw_rate_range_rad_s = [-0.5, 0.5]
+        config.forward_velocity_range_m_s = list(velocity_ranges[stage_index])
+        yaw_limit = yaw_ranges[stage_index]
+        config.yaw_rate_range_rad_s = [-yaw_limit, yaw_limit]
         config.yaw_tracking_sigma = 0.1
-        config.straight_command_probability = 0.30
-        config.turn_in_place_probability = 0.15
+        config.straight_command_probability = straight_fractions[stage_index]
+        config.turn_in_place_probability = turn_in_place_fractions[stage_index]
         config.enable_head_command = True
         config.head_mode_probability = standing_fraction
         config.head_zero_probability = 0.25
