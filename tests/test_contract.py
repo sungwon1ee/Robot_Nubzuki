@@ -197,6 +197,35 @@ class StandingContractTests(unittest.TestCase):
         )
         self.assertFalse(np.any(turn_in_place))
 
+    def test_head_position_stages_overlay_only_yaw_and_pitch(self):
+        expected = (
+            ("head_position_1", 0.20, 0.20, 0.50),
+            ("head_position_2", 0.40, 0.40, 0.75),
+            ("head_position_3", 0.60, 0.60, 1.00),
+        )
+        for index, (stage, probability, factor, weight) in enumerate(expected):
+            config = walking_config(stage)
+            self.assertTrue(config.enable_head_command)
+            self.assertEqual(config.head_mode_probability, 0.0)
+            self.assertEqual(config.simultaneous_head_probability, probability)
+            self.assertEqual(config.head_range_factor, factor)
+            self.assertTrue(config.head_yaw_pitch_only)
+            self.assertEqual(config.reward_config.scales.head_pose_tracking, weight)
+            self.assertEqual(config.reward_config.scales.action_rate, -0.3)
+
+            env = Walking(config=config)
+            commands = np.asarray(
+                jax.vmap(env.sample_command)(
+                    jax.random.split(jax.random.PRNGKey(50 + index), 8192)
+                )
+            )
+            self.assertTrue(np.allclose(commands[:, 3], 0.0))
+            self.assertTrue(np.allclose(commands[:, 6], 0.0))
+            head_active = np.linalg.norm(commands[:, 4:6], axis=1) > 1.0e-6
+            self.assertAlmostEqual(np.mean(head_active), probability, delta=0.03)
+            stopped = np.linalg.norm(commands[:, :3], axis=1) < 1.0e-6
+            self.assertAlmostEqual(np.mean(stopped), 0.20, delta=0.03)
+
     def test_walk_mode_maps_only_forward_stick(self):
         metadata = {
             "policy": "walking",

@@ -29,7 +29,8 @@ from playground.nubzuki.standing import Standing, default_config as standing_con
 
 
 WALKING_STAGES = (
-    "discovery", "locomotion", "refine", "control", "turning",
+    "discovery", "locomotion", "head_position_1", "head_position_2",
+    "head_position_3", "refine", "control", "turning",
 )
 
 
@@ -68,6 +69,8 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     config.turn_in_place_probability = 0.0
     config.head_mode_probability = 0.0
     config.head_zero_probability = 1.0
+    config.simultaneous_head_probability = 1.0
+    config.head_yaw_pitch_only = False
 
     if stage == "locomotion":
         # Continue from the best gait checkpoint and learn only forward motion
@@ -95,6 +98,43 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.straight_yaw_rate = -0.1
         scales.action_rate = -0.3
         scales.head_pose_tracking = 0.0
+        scales.head_action_rate = -0.01
+        scales.head_joint_vel = 0.0
+        scales.head_roll_home = 0.0
+        scales.head_roll_vel = 0.0
+    elif stage.startswith("head_position_"):
+        stage_index = int(stage.rsplit("_", 1)[1]) - 1
+        head_probabilities = (0.20, 0.40, 0.60)
+        head_range_factors = (0.20, 0.40, 0.60)
+        head_tracking_weights = (0.50, 0.75, 1.00)
+
+        # Preserve the proven locomotion distribution and overlay only the
+        # two head axes exposed by WALK + HEAD: pitch and yaw.
+        config.forward_velocity_range_m_s = [0.04, 0.18]
+        config.yaw_rate_range_rad_s = [-0.70, 0.70]
+        config.min_turn_yaw_rate_rad_s = 0.15
+        config.yaw_tracking_sigma = 0.1
+        config.straight_command_probability = 0.20
+        config.turn_in_place_probability = 0.0
+        config.zero_command_probability = 0.20
+        config.enable_head_command = True
+        config.head_mode_probability = 0.0
+        config.head_zero_probability = 1.0
+        config.simultaneous_head_probability = head_probabilities[stage_index]
+        config.head_range_factor = head_range_factors[stage_index]
+        config.head_yaw_pitch_only = True
+
+        scales.pose = 0.3
+        scales.feet_air_time = 2.5
+        scales.foot_clearance = -0.1
+        scales.feet_height = -0.05
+        scales.foot_slip = -0.1
+        scales.body_ang_vel = -0.02
+        scales.yaw_rate = 0.0
+        scales.yaw_tracking = 5.0
+        scales.straight_yaw_rate = -0.1
+        scales.action_rate = -0.3
+        scales.head_pose_tracking = head_tracking_weights[stage_index]
         scales.head_action_rate = -0.01
         scales.head_joint_vel = 0.0
         scales.head_roll_home = 0.0
@@ -209,15 +249,20 @@ class Walking(Standing):
         locomotion_active = jp.linalg.norm(info["command"][:3]) > 0.01
         # Walking controls yaw/pitch but leaves roll mechanically free.  Head
         # mode still tracks all four joints, including roll and neck pitch.
-        rewards["head_pose_tracking"] = jp.where(
-            locomotion_active,
-            reward_pose_tracking(
-                joint_pos[5:8], info["command"][3:6], std=0.5
-            ),
-            reward_pose_tracking(
-                joint_pos[5:9], info["command"][3:], std=0.5
-            ),
-        )
+        if self._config.head_yaw_pitch_only:
+            rewards["head_pose_tracking"] = reward_pose_tracking(
+                joint_pos[6:8], info["command"][4:6], std=0.5
+            )
+        else:
+            rewards["head_pose_tracking"] = jp.where(
+                locomotion_active,
+                reward_pose_tracking(
+                    joint_pos[5:8], info["command"][3:6], std=0.5
+                ),
+                reward_pose_tracking(
+                    joint_pos[5:9], info["command"][3:], std=0.5
+                ),
+            )
         feet_vel = data.sensordata[self._foot_linvel_sensor_adr]
         feet_pos = data.site_xpos[self._feet_site_id]
         rewards["foot_clearance"] = cost_feet_clearance(
@@ -283,11 +328,12 @@ class Walking(Standing):
             mode_rng,
             zero_rng,
             head_zero_rng,
+            simultaneous_head_rng,
             neck_rng,
             pitch_rng,
             head_yaw_rng,
             roll_rng,
-        ) = jax.random.split(rng, 11)
+        ) = jax.random.split(rng, 12)
         factor = self._config.head_range_factor
         head_command = jp.array(
             [
@@ -318,7 +364,22 @@ class Walking(Standing):
             minval=self._config.forward_velocity_range_m_s[0],
             maxval=self._config.forward_velocity_range_m_s[1],
         )
-        moving_command = jp.hstack([forward_velocity, 0.0, 0.0, head_command])
+        walking_head_command = jp.where(
+            self._config.head_yaw_pitch_only,
+            head_command.at[jp.array([0, 3])].set(0.0),
+            head_command,
+        )
+        walking_head_command = jp.where(
+            jax.random.bernoulli(
+                simultaneous_head_rng,
+                p=self._config.simultaneous_head_probability,
+            ),
+            walking_head_command,
+            jp.zeros(4),
+        )
+        moving_command = jp.hstack(
+            [forward_velocity, 0.0, 0.0, walking_head_command]
+        )
         yaw_rate = jax.random.uniform(
             yaw_rng,
             minval=self._config.yaw_rate_range_rad_s[0],
@@ -363,6 +424,13 @@ class Walking(Standing):
             moving_command,
         )
         if self._config.enable_head_command:
+            if self._config.head_yaw_pitch_only:
+                stop = jax.random.bernoulli(
+                    zero_rng, p=self._config.zero_command_probability
+                )
+                controlled_command = controlled_command.at[:3].set(
+                    jp.where(stop, jp.zeros(3), controlled_command[:3])
+                )
             return controlled_command
         return jp.where(
             jax.random.bernoulli(

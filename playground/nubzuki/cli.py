@@ -34,7 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument(
         "--walk-stage",
         choices=(
-            "discovery", "locomotion", "refine", "control", "turning",
+            "discovery", "locomotion", "head_position_1", "head_position_2",
+            "head_position_3", "refine", "control", "turning",
         ),
         default="discovery",
         help="walking curriculum stage; ignored by the standing environment",
