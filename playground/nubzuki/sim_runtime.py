@@ -76,6 +76,7 @@ def run_simulation(
     control: str = "phone",
     host: str = "0.0.0.0",
     port: int = 8765,
+    floor_friction: float | None = None,
 ) -> None:
     calibration = NubzukiCalibration(calibration_path)
     profile, may_check_hash = _load_profile(head_profile_path, calibration)
@@ -88,6 +89,12 @@ def run_simulation(
     if model_path == constants.FLAT_TERRAIN_XML:
         print("Detailed Nubzuki CAD scene was not found; using lightweight training geometry.")
     model = mujoco.MjModel.from_xml_path(str(model_path))
+    if floor_friction is not None:
+        if not np.isfinite(floor_friction) or floor_friction < 0.0:
+            raise ValueError("floor friction must be a finite non-negative value")
+        floor_id = model.geom("floor").id
+        model.geom_friction[floor_id, 0] = float(floor_friction)
+        print(f"Floor sliding friction override: {floor_friction:g}")
     data = mujoco.MjData(model)
     mujoco.mj_resetDataKeyframe(model, data, model.keyframe("home").id)
     qpos_addresses = [model.jnt_qposadr[model.joint(name).id] for name in calibration.joint_order]

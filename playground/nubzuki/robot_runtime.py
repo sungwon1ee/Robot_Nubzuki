@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import time
 from pathlib import Path
 
@@ -69,7 +70,7 @@ def park(hardware: ServoHardware, calibration: NubzukiCalibration,
 def run_robot(policy_path: str, port: str, calibration_path: str | None,
               head_profile_path: str, imu_upside_down: bool = False,
               control: str = "joystick", host: str = "0.0.0.0",
-              web_port: int = 8766) -> None:
+              web_port: int = 8766, debug_log_path: str | None = None) -> None:
     calibration = NubzukiCalibration(calibration_path)
     profile = HeadDynamicsProfile.load(head_profile_path, calibration)
     if not profile.measured:
@@ -90,6 +91,26 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
     previous_targets = np.zeros(14)
     a_was_pressed = False
     dt = 1.0 / calibration.control_frequency_hz
+    debug_file = None
+    debug_writer = None
+    debug_rows = 0
+    debug_started = time.monotonic()
+    if debug_log_path:
+        path = Path(debug_log_path).expanduser()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        debug_file = path.open("w", newline="", encoding="utf-8")
+        debug_writer = csv.writer(debug_file)
+        debug_writer.writerow([
+            "time_s", "forward_cmd_m_s", "yaw_cmd_rad_s",
+            "gyro_x", "gyro_y", "gyro_z",
+            "accel_x", "accel_y", "accel_z",
+            "left_contact", "right_contact",
+            "left_hip_roll_actual_rad", "right_hip_roll_actual_rad",
+            "left_hip_roll_policy_target_rad", "right_hip_roll_policy_target_rad",
+            "left_hip_roll_sent_target_rad", "right_hip_roll_sent_target_rad",
+        ])
+        debug_file.flush()
+        print(f"Debug CSV: {path.resolve()}")
     try:
         hardware.disable_torque()
         hardware.preflight()
@@ -167,19 +188,34 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             imu_data = imu.read()
             qpos = hardware.read_positions()
             qvel = hardware.read_velocities()
+            contacts = feet.read()
             observation = builder.build(
                 imu_data["gyro"], imu_data["accelerometer"], command,
-                qpos, qvel, feet.read(),
+                qpos, qvel, contacts,
             )
             action = policy.infer(observation)
             builder.advance(action)
-            requested = action * calibration.action_scale_rad
+            policy_target = action * calibration.action_scale_rad
             lowers = np.asarray([calibration.limits_rad(name)[0] for name in calibration.joint_order])
             uppers = np.asarray([calibration.limits_rad(name)[1] for name in calibration.joint_order])
-            requested = np.clip(requested, lowers, uppers)
+            policy_target = np.clip(policy_target, lowers, uppers)
             max_delta = float(calibration.data["runtime"]["max_motor_velocity_rad_s"]) * dt
-            requested = np.clip(requested, previous_targets - max_delta, previous_targets + max_delta)
+            requested = np.clip(
+                policy_target, previous_targets - max_delta, previous_targets + max_delta
+            )
             hardware.set_positions(dict(zip(calibration.joint_order, requested)))
+            if debug_writer is not None:
+                left_roll, right_roll = 1, 10
+                debug_writer.writerow([
+                    time.monotonic() - debug_started, forward, yaw_rate,
+                    *imu_data["gyro"], *imu_data["accelerometer"], *contacts,
+                    qpos[left_roll], qpos[right_roll],
+                    policy_target[left_roll], policy_target[right_roll],
+                    requested[left_roll], requested[right_roll],
+                ])
+                debug_rows += 1
+                if debug_rows % calibration.control_frequency_hz == 0:
+                    debug_file.flush()
             previous_targets = requested
             time.sleep(max(0.0, dt - (time.monotonic() - started)))
     finally:
@@ -198,3 +234,5 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             print(f"Park failed, holding last commanded pose: {error}")
         controller.close()
         feet.close()
+        if debug_file is not None:
+            debug_file.close()

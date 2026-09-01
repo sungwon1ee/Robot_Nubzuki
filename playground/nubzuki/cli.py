@@ -84,6 +84,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sim.add_argument("--host", default="0.0.0.0", help="phone control bind address")
     sim.add_argument("--port", type=int, default=8765, help="phone control port")
+    sim.add_argument(
+        "--floor-friction", type=float, default=None,
+        help="override MuJoCo floor sliding friction for sim-to-real testing",
+    )
     identify = sub.add_parser("identify-head", help="measure joystick and head response")
     identify.add_argument("--port", default="/dev/ttyACM0")
     identify.add_argument("--output", default="config/head_dynamics.json")
@@ -106,6 +110,10 @@ def build_parser() -> argparse.ArgumentParser:
     robot.add_argument("--web-port", type=int, default=8766, help="phone control HTTP port")
     robot.add_argument("--head-profile", default="config/head_dynamics.json")
     robot.add_argument("--imu-upside-down", action="store_true")
+    robot.add_argument(
+        "--debug-log", default=None,
+        help="write real-robot commands, IMU, contacts and hip-roll tracking to CSV",
+    )
     return parser
 
 
@@ -130,7 +138,7 @@ def main() -> None:
         from playground.nubzuki.sim_runtime import run_simulation
         run_simulation(
             args.policy, args.calibration, args.head_profile,
-            args.control, args.host, args.port,
+            args.control, args.host, args.port, args.floor_friction,
         )
     elif args.command == "identify-head":
         from playground.nubzuki.calibration import NubzukiCalibration
@@ -148,6 +156,7 @@ def main() -> None:
         run_robot(
             args.policy, args.port, args.calibration, args.head_profile,
             args.imu_upside_down, args.control, args.host, args.web_port,
+            args.debug_log,
         )
 
 

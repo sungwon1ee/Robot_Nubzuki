@@ -371,6 +371,18 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(args.control, "phone")
         self.assertEqual(args.web_port, 8766)
 
+    def test_robot_accepts_debug_csv_path(self):
+        args = build_parser().parse_args([
+            "robot", "--policy", "policy.onnx", "--debug-log", "logs/test.csv",
+        ])
+        self.assertEqual(args.debug_log, "logs/test.csv")
+
+    def test_sim_accepts_floor_friction_override(self):
+        args = build_parser().parse_args(
+            ["sim", "--policy", "policy.onnx", "--floor-friction", "0.2"]
+        )
+        self.assertEqual(args.floor_friction, 0.2)
+
     def test_identify_head_supports_phone_control(self):
         args = build_parser().parse_args(
             ["identify-head", "--control", "phone"]
