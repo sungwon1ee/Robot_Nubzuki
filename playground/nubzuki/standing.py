@@ -205,6 +205,16 @@ class Standing(NubzukiEnv):
             maxval=self._config.push_config.interval_range[1],
         )
         push_interval_steps = jp.round(push_interval / self.dt).astype(jp.int32)
+        rng, delay_rng = jax.random.split(rng)
+        # A physical actuator/bus has one latency during a rollout; resampling
+        # the history index every control tick reorders commands and creates an
+        # artificial jitter that is much harsher than real latency.
+        action_delay = jax.random.randint(
+            delay_rng,
+            (),
+            minval=self._config.noise_config.action_min_delay,
+            maxval=self._config.noise_config.action_max_delay,
+        )
 
         info = {
             "rng": rng,
@@ -223,6 +233,7 @@ class Standing(NubzukiEnv):
             "action_history": jp.zeros(
                 self._config.noise_config.action_max_delay * self._actuators
             ),
+            "action_delay": action_delay,
             "imu_history": jp.zeros(self._config.noise_config.imu_max_delay * 3),
             "imitation_i": 0,
             "current_reference_motion": jp.zeros(0),
@@ -249,8 +260,7 @@ class Standing(NubzukiEnv):
             push_direction_rng,
             push_magnitude_rng,
             push_interval_rng,
-            delay_rng,
-        ) = jax.random.split(state.info["rng"], 5)
+        ) = jax.random.split(state.info["rng"], 4)
 
         action_history = (
             jp.roll(state.info["action_history"], self._actuators)
@@ -258,14 +268,8 @@ class Standing(NubzukiEnv):
             .set(action)
         )
         state.info["action_history"] = action_history
-        action_idx = jax.random.randint(
-            delay_rng,
-            (1,),
-            minval=self._config.noise_config.action_min_delay,
-            maxval=self._config.noise_config.action_max_delay,
-        )
         delayed_action = action_history.reshape((-1, self._actuators))[
-            action_idx[0]
+            state.info["action_delay"]
         ]
 
         push_angle = jax.random.uniform(

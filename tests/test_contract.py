@@ -6,6 +6,7 @@ from pathlib import Path
 import mujoco
 import numpy as np
 import jax
+import jax.numpy as jp
 
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
 from playground.nubzuki.controller import (
@@ -238,6 +239,14 @@ class StandingContractTests(unittest.TestCase):
                          final.noise_config.action_max_delay)
         self.assertEqual(alias.straight_command_probability,
                          final.straight_command_probability)
+
+    def test_action_delay_is_sampled_once_per_episode(self):
+        env = Walking(config=walking_config("sim2real_1"))
+        state = env.reset(jax.random.PRNGKey(101))
+        sampled_delay = int(state.info["action_delay"])
+        self.assertIn(sampled_delay, (4, 5, 6))
+        state = env.step(state, jp.zeros(env.mjx_model.nu))
+        self.assertEqual(int(state.info["action_delay"]), sampled_delay)
 
     def test_head_position_stages_overlay_only_yaw_and_pitch(self):
         expected = (
