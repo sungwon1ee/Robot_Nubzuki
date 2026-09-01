@@ -29,8 +29,9 @@ from playground.nubzuki.standing import Standing, default_config as standing_con
 
 
 WALKING_STAGES = (
-    "discovery", "locomotion", "sim2real", "head_position_1", "head_position_2",
-    "head_position_3", "refine", "control", "turning",
+    "discovery", "locomotion", "sim2real_1", "sim2real_2", "sim2real_3",
+    "sim2real", "head_position_1", "head_position_2", "head_position_3",
+    "refine", "control", "turning",
 )
 
 
@@ -72,7 +73,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     config.simultaneous_head_probability = 1.0
     config.head_yaw_pitch_only = False
 
-    if stage in ("locomotion", "sim2real"):
+    if stage in ("locomotion", "sim2real", "sim2real_1", "sim2real_2", "sim2real_3"):
         # Continue from the best gait checkpoint and learn only forward motion
         # plus curved left/right turns.  Head commands, reverse and in-place
         # turns are deliberately absent until locomotion is robust on video.
@@ -102,12 +103,22 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.head_joint_vel = 0.0
         scales.head_roll_home = 0.0
         scales.head_roll_vel = 0.0
-        if stage == "sim2real":
-            # The physical STS3215 response measured from the hardware log
-            # trails commanded targets by roughly 8--10 control ticks.
-            # randint's upper bound is exclusive, hence 11 here.
-            config.noise_config.action_min_delay = 8
-            config.noise_config.action_max_delay = 11
+        if stage.startswith("sim2real"):
+            # Curriculum totals include the 20% stop commands.  The sampler
+            # chooses straight versus turning only after the stop draw, so the
+            # conditional probabilities below produce total distributions of
+            # 60/20/20, 40/40/20 and 20/60/20 (straight/turn/stop).
+            curriculum = {
+                "sim2real_1": (4, 7, 0.75),
+                "sim2real_2": (6, 9, 0.50),
+                "sim2real_3": (8, 11, 0.25),
+                # Backward-compatible alias for the former final stage.
+                "sim2real": (8, 11, 0.25),
+            }
+            delay_min, delay_max, straight_probability = curriculum[stage]
+            config.noise_config.action_min_delay = delay_min
+            config.noise_config.action_max_delay = delay_max
+            config.straight_command_probability = straight_probability
     elif stage.startswith("head_position_"):
         stage_index = int(stage.rsplit("_", 1)[1]) - 1
         head_probabilities = (0.20, 0.40, 0.60)

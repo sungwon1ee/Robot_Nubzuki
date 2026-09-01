@@ -201,17 +201,43 @@ class StandingContractTests(unittest.TestCase):
         )
         self.assertFalse(np.any(turn_in_place))
 
-    def test_sim2real_preserves_locomotion_with_measured_action_delay(self):
+    def test_sim2real_curriculum_preserves_locomotion_and_progresses_delay(self):
         locomotion = walking_config("locomotion")
-        sim2real = walking_config("sim2real")
-        self.assertEqual(sim2real.forward_velocity_range_m_s,
-                         locomotion.forward_velocity_range_m_s)
-        self.assertEqual(sim2real.yaw_rate_range_rad_s,
-                         locomotion.yaw_rate_range_rad_s)
-        self.assertEqual(sim2real.reward_config.scales,
-                         locomotion.reward_config.scales)
-        self.assertEqual(sim2real.noise_config.action_min_delay, 8)
-        self.assertEqual(sim2real.noise_config.action_max_delay, 11)
+        expected = (
+            ("sim2real_1", 4, 7, 0.60, 0.20),
+            ("sim2real_2", 6, 9, 0.40, 0.40),
+            ("sim2real_3", 8, 11, 0.20, 0.60),
+        )
+        for index, (stage, delay_min, delay_max, straight_ratio, turn_ratio) in enumerate(expected):
+            config = walking_config(stage)
+            self.assertEqual(config.forward_velocity_range_m_s,
+                             locomotion.forward_velocity_range_m_s)
+            self.assertEqual(config.yaw_rate_range_rad_s,
+                             locomotion.yaw_rate_range_rad_s)
+            self.assertEqual(config.reward_config.scales,
+                             locomotion.reward_config.scales)
+            self.assertEqual(config.noise_config.action_min_delay, delay_min)
+            self.assertEqual(config.noise_config.action_max_delay, delay_max)
+
+            env = Walking(config=config)
+            commands = np.asarray(jax.vmap(env.sample_command)(
+                jax.random.split(jax.random.PRNGKey(80 + index), 32768)
+            ))
+            stopped = np.linalg.norm(commands[:, :3], axis=1) < 1.0e-6
+            straight = (commands[:, 0] > 0.01) & (np.abs(commands[:, 2]) < 1.0e-6)
+            turning = (commands[:, 0] > 0.01) & (np.abs(commands[:, 2]) > 0.01)
+            self.assertAlmostEqual(np.mean(stopped), 0.20, delta=0.02)
+            self.assertAlmostEqual(np.mean(straight), straight_ratio, delta=0.02)
+            self.assertAlmostEqual(np.mean(turning), turn_ratio, delta=0.02)
+
+        alias = walking_config("sim2real")
+        final = walking_config("sim2real_3")
+        self.assertEqual(alias.noise_config.action_min_delay,
+                         final.noise_config.action_min_delay)
+        self.assertEqual(alias.noise_config.action_max_delay,
+                         final.noise_config.action_max_delay)
+        self.assertEqual(alias.straight_command_probability,
+                         final.straight_command_probability)
 
     def test_head_position_stages_overlay_only_yaw_and_pitch(self):
         expected = (
