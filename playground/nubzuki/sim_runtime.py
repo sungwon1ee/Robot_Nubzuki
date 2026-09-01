@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from pathlib import Path
 import time
 
@@ -77,6 +78,7 @@ def run_simulation(
     host: str = "0.0.0.0",
     port: int = 8765,
     floor_friction: float | None = None,
+    action_delay: float = 0.0,
 ) -> None:
     calibration = NubzukiCalibration(calibration_path)
     profile, may_check_hash = _load_profile(head_profile_path, calibration)
@@ -103,6 +105,18 @@ def run_simulation(
     limiter = HeadTrajectoryLimiter(profile)
     builder = ObservationBuilder()
     dt = 1.0 / calibration.control_frequency_hz
+    if not np.isfinite(action_delay) or action_delay < 0.0:
+        raise ValueError("action delay must be a finite non-negative value")
+    action_delay_steps = int(round(action_delay * calibration.control_frequency_hz))
+    action_queue = deque(
+        (np.zeros(len(calibration.joint_order)) for _ in range(action_delay_steps + 1)),
+        maxlen=action_delay_steps + 1,
+    )
+    if action_delay_steps:
+        print(
+            f"Action delay override: {action_delay_steps} control steps "
+            f"({action_delay_steps * dt:.3f} s)"
+        )
     announced = False
     try:
         with mujoco.viewer.launch_passive(model, data) as viewer:
@@ -138,7 +152,9 @@ def run_simulation(
                 )
                 action = policy.infer(obs)
                 builder.advance(action)
-                data.ctrl[:] = action * calibration.action_scale_rad
+                action_queue.append(action.copy())
+                delayed_action = action_queue[0]
+                data.ctrl[:] = delayed_action * calibration.action_scale_rad
                 for _ in range(10):
                     mujoco.mj_step(model, data)
                 # Mouse panning changes the viewer's look-at point (and can

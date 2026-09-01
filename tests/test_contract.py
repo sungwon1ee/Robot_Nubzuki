@@ -201,6 +201,18 @@ class StandingContractTests(unittest.TestCase):
         )
         self.assertFalse(np.any(turn_in_place))
 
+    def test_sim2real_preserves_locomotion_with_measured_action_delay(self):
+        locomotion = walking_config("locomotion")
+        sim2real = walking_config("sim2real")
+        self.assertEqual(sim2real.forward_velocity_range_m_s,
+                         locomotion.forward_velocity_range_m_s)
+        self.assertEqual(sim2real.yaw_rate_range_rad_s,
+                         locomotion.yaw_rate_range_rad_s)
+        self.assertEqual(sim2real.reward_config.scales,
+                         locomotion.reward_config.scales)
+        self.assertEqual(sim2real.noise_config.action_min_delay, 8)
+        self.assertEqual(sim2real.noise_config.action_max_delay, 11)
+
     def test_head_position_stages_overlay_only_yaw_and_pitch(self):
         expected = (
             ("head_position_1", 0.20, 0.20, 0.50),
@@ -382,6 +394,12 @@ class StandingContractTests(unittest.TestCase):
             ["sim", "--policy", "policy.onnx", "--floor-friction", "0.2"]
         )
         self.assertEqual(args.floor_friction, 0.2)
+
+    def test_sim_accepts_action_delay_override(self):
+        args = build_parser().parse_args(
+            ["sim", "--policy", "policy.onnx", "--action-delay", "0.2"]
+        )
+        self.assertEqual(args.action_delay, 0.2)
 
     def test_identify_head_supports_phone_control(self):
         args = build_parser().parse_args(

@@ -29,7 +29,7 @@ from playground.nubzuki.standing import Standing, default_config as standing_con
 
 
 WALKING_STAGES = (
-    "discovery", "locomotion", "head_position_1", "head_position_2",
+    "discovery", "locomotion", "sim2real", "head_position_1", "head_position_2",
     "head_position_3", "refine", "control", "turning",
 )
 
@@ -72,7 +72,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     config.simultaneous_head_probability = 1.0
     config.head_yaw_pitch_only = False
 
-    if stage == "locomotion":
+    if stage in ("locomotion", "sim2real"):
         # Continue from the best gait checkpoint and learn only forward motion
         # plus curved left/right turns.  Head commands, reverse and in-place
         # turns are deliberately absent until locomotion is robust on video.
@@ -102,6 +102,12 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.head_joint_vel = 0.0
         scales.head_roll_home = 0.0
         scales.head_roll_vel = 0.0
+        if stage == "sim2real":
+            # The physical STS3215 response measured from the hardware log
+            # trails commanded targets by roughly 8--10 control ticks.
+            # randint's upper bound is exclusive, hence 11 here.
+            config.noise_config.action_min_delay = 8
+            config.noise_config.action_max_delay = 11
     elif stage.startswith("head_position_"):
         stage_index = int(stage.rsplit("_", 1)[1]) - 1
         head_probabilities = (0.20, 0.40, 0.60)

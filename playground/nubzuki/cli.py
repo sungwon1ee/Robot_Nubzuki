@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument(
         "--walk-stage",
         choices=(
-            "discovery", "locomotion", "head_position_1", "head_position_2",
+            "discovery", "locomotion", "sim2real", "head_position_1", "head_position_2",
             "head_position_3", "refine", "control", "turning",
         ),
         default="discovery",
@@ -88,6 +88,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--floor-friction", type=float, default=None,
         help="override MuJoCo floor sliding friction for sim-to-real testing",
     )
+    sim.add_argument(
+        "--action-delay", type=float, default=0.0, metavar="SECONDS",
+        help="delay actuator commands in MuJoCo (for example 0.2)",
+    )
     identify = sub.add_parser("identify-head", help="measure joystick and head response")
     identify.add_argument("--port", default="/dev/ttyACM0")
     identify.add_argument("--output", default="config/head_dynamics.json")
@@ -139,6 +143,7 @@ def main() -> None:
         run_simulation(
             args.policy, args.calibration, args.head_profile,
             args.control, args.host, args.port, args.floor_friction,
+            args.action_delay,
         )
     elif args.command == "identify-head":
         from playground.nubzuki.calibration import NubzukiCalibration
