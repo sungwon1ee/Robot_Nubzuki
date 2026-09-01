@@ -33,12 +33,16 @@ class RecordingHardware:
     def __init__(self):
         self.writes = []
         self.torque_disabled = False
+        self.torque_enabled = False
 
     def set_positions(self, positions):
         self.writes.append(dict(positions))
 
     def disable_torque(self, names=None):
         self.torque_disabled = True
+
+    def enable_torque(self, names=None):
+        self.torque_enabled = True
 
 
 class StandingContractTests(unittest.TestCase):
@@ -464,14 +468,27 @@ class SafeStopTests(unittest.TestCase):
 
     def test_nothing_the_armed_loop_can_do_cuts_torque(self):
         source = Path("playground/nubzuki/robot_runtime.py").read_text()
-        # Once armed there is no path back to a torque cut: not a lost
-        # controller, not an exception, not the B button. Both remaining
-        # calls sit in the pre-arm state the loop started in.
+        # Once the startup park target is energised there is no path back to a
+        # torque cut: not a lost controller, not an exception, not the B button.
         self.assertEqual(source.count("disable_torque()"), 2)
-        self.assertIn("if not armed:", source)
+        self.assertIn("if not servos_energized:", source)
         self.assertNotIn("emergency", source.lower())
-        after_arming = source.split("armed = True", 1)[1]
-        self.assertNotIn("disable_torque()", after_arming.split("if not armed:")[0])
+        after_energizing = source.split("servos_energized = True", 1)[1]
+        self.assertNotIn(
+            "disable_torque()",
+            after_energizing.split("if not servos_energized:")[0],
+        )
+
+    def test_robot_holds_park_before_waiting_for_arm(self):
+        source = Path("playground/nubzuki/robot_runtime.py").read_text()
+        startup = source.split("while True:", 1)[0]
+        self.assertIn("hardware.enable_torque()", startup)
+        self.assertLess(
+            startup.index("hardware.set_positions"),
+            startup.index("hardware.enable_torque()"),
+        )
+        self.assertIn("park(hardware, calibration, previous_targets, dt)", startup)
+        self.assertIn("Holding park pose", startup)
 
     def test_park_lands_on_the_calibrated_pose_without_cutting_torque(self):
         hardware = RecordingHardware()

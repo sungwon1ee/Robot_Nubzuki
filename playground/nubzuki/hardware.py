@@ -29,6 +29,10 @@ class ServoHardware:
         ids = self.ids if names is None else [self.calibration.servo_id(name) for name in names]
         self.io.disable_torque(ids)
 
+    def enable_torque(self, names=None) -> None:
+        ids = self.ids if names is None else [self.calibration.servo_id(name) for name in names]
+        self.io.enable_torque(ids)
+
     def set_positions(self, positions: dict[str, float]) -> None:
         names = tuple(positions)
         ids = [self.calibration.servo_id(name) for name in names]

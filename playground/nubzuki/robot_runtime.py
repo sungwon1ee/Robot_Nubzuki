@@ -85,6 +85,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
     builder = ObservationBuilder()
     limiter = HeadTrajectoryLimiter(profile)
     armed = False
+    servos_energized = False
     link_lost = False
     previous_targets = np.zeros(14)
     a_was_pressed = False
@@ -92,7 +93,29 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
     try:
         hardware.disable_torque()
         hardware.preflight()
-        print("Preflight OK. Press A to arm; press B to park and stop.")
+        # Never leave a connected robot limp while waiting for ARM.  Enter the
+        # calibrated park pose gently at low gain, then hold it at runtime gain.
+        previous_targets = hardware.read_positions()
+        hardware.set_positions(dict(zip(calibration.joint_order, previous_targets)))
+        low = int(calibration.data["runtime"]["low_kp"])
+        hardware.set_kps([low] * 14)
+        hardware.enable_torque()
+        servos_energized = True
+        park(hardware, calibration, previous_targets, dt)
+        previous_targets = np.asarray([
+            calibration.park_rad(name) for name in calibration.joint_order
+        ])
+        leg_kp = int(calibration.data["runtime"]["leg_kp"])
+        head_kp = int(calibration.data["runtime"]["head_kp"])
+        runtime_kps = [
+            head_kp if name in HEAD_JOINTS else leg_kp
+            for name in calibration.joint_order
+        ]
+        hardware.set_kps(runtime_kps)
+        print(
+            "Preflight OK. Holding park pose. "
+            "Press A to arm; press B to park and stop."
+        )
         while True:
             started = time.monotonic()
             axes, a_pressed, b_pressed = controller.read()
@@ -101,14 +124,10 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 break
             if not armed:
                 if a_pressed and not a_was_pressed:
-                    low = int(calibration.data["runtime"]["low_kp"])
                     hardware.set_kps([low] * 14)
                     hardware.set_positions({name: 0.0 for name in calibration.joint_order})
                     time.sleep(1.0)
-                    leg_kp = int(calibration.data["runtime"]["leg_kp"])
-                    head_kp = int(calibration.data["runtime"]["head_kp"])
-                    kps = [head_kp if name in HEAD_JOINTS else leg_kp for name in calibration.joint_order]
-                    hardware.set_kps(kps)
+                    hardware.set_kps(runtime_kps)
                     armed = True
                     print("Policy armed")
                 a_was_pressed = a_pressed
@@ -165,9 +184,9 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             time.sleep(max(0.0, dt - (time.monotonic() - started)))
     finally:
         try:
-            if not armed:
-                # Nothing was ever energised, so this only mirrors the state
-                # the loop started in. It is unreachable once the policy arms.
+            if not servos_energized:
+                # A preflight failure happened before a position target was
+                # written, so the initial torque-off state is still safe.
                 hardware.disable_torque()
             else:
                 park(hardware, calibration, previous_targets, dt)
