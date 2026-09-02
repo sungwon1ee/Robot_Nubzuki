@@ -240,6 +240,17 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(alias.straight_command_probability,
                          final.straight_command_probability)
 
+    def test_torque_limit_stage_caps_leg_actuators(self):
+        config = walking_config("torque_limit")
+        self.assertEqual(config.leg_force_limit_nm, 2.0)
+        env = Walking(config=config)
+        for name in env.actuator_names:
+            limit = env._mj_model.actuator_forcerange[
+                env._mj_model.actuator(name).id
+            ]
+            expected = 3.23 if name in HEAD_JOINTS else 2.0
+            np.testing.assert_allclose(limit, [-expected, expected])
+
     def test_action_delay_is_sampled_once_per_episode(self):
         env = Walking(config=walking_config("sim2real_1"))
         state = env.reset(jax.random.PRNGKey(101))
@@ -441,6 +452,13 @@ class StandingContractTests(unittest.TestCase):
             ["sim", "--policy", "policy.onnx", "--show-torques"]
         )
         self.assertTrue(args.show_torques)
+
+    def test_sim_accepts_actuator_force_limit_override(self):
+        args = build_parser().parse_args([
+            "sim", "--policy", "policy.onnx",
+            "--actuator-force-limit", "2.0",
+        ])
+        self.assertEqual(args.actuator_force_limit, 2.0)
 
     def test_identify_head_supports_phone_control(self):
         args = build_parser().parse_args(

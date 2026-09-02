@@ -86,6 +86,7 @@ def run_simulation(
     floor_friction: float | None = None,
     action_delay: float = 0.0,
     show_torques: bool = False,
+    actuator_force_limit: float | None = None,
 ) -> None:
     calibration = NubzukiCalibration(calibration_path)
     profile, may_check_hash = _load_profile(head_profile_path, calibration)
@@ -98,6 +99,17 @@ def run_simulation(
     if model_path == constants.FLAT_TERRAIN_XML:
         print("Detailed Nubzuki CAD scene was not found; using lightweight training geometry.")
     model = mujoco.MjModel.from_xml_path(str(model_path))
+    if actuator_force_limit is not None:
+        if not np.isfinite(actuator_force_limit) or actuator_force_limit <= 0.0:
+            raise ValueError("actuator force limit must be a finite positive value")
+        for name in calibration.joint_order:
+            if name in HEAD_JOINTS:
+                continue
+            actuator_id = model.actuator(name).id
+            model.actuator_forcerange[actuator_id] = (
+                -actuator_force_limit, actuator_force_limit
+            )
+        print(f"Leg actuator force limit override: +/-{actuator_force_limit:g} N.m")
     if floor_friction is not None:
         if not np.isfinite(floor_friction) or floor_friction < 0.0:
             raise ValueError("floor friction must be a finite non-negative value")

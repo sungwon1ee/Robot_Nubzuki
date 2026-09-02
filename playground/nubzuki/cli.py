@@ -35,7 +35,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--walk-stage",
         choices=(
             "discovery", "locomotion", "sim2real_1", "sim2real_2", "sim2real_3",
-            "sim2real", "head_position_1", "head_position_2", "head_position_3",
+            "sim2real", "torque_limit", "head_position_1", "head_position_2",
+            "head_position_3",
             "refine", "control", "turning",
         ),
         default="discovery",
@@ -97,6 +98,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--show-torques", action="store_true",
         help="print live leg-joint torque and actuator-limit utilization",
     )
+    sim.add_argument(
+        "--actuator-force-limit", type=float, default=None, metavar="N_M",
+        help="override all leg actuator force limits in MuJoCo",
+    )
     identify = sub.add_parser("identify-head", help="measure joystick and head response")
     identify.add_argument("--port", default="/dev/ttyACM0")
     identify.add_argument("--output", default="config/head_dynamics.json")
@@ -148,7 +153,7 @@ def main() -> None:
         run_simulation(
             args.policy, args.calibration, args.head_profile,
             args.control, args.host, args.port, args.floor_friction,
-            args.action_delay, args.show_torques,
+            args.action_delay, args.show_torques, args.actuator_force_limit,
         )
     elif args.command == "identify-head":
         from playground.nubzuki.calibration import NubzukiCalibration

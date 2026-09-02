@@ -56,6 +56,7 @@ def default_config() -> config_dict.ConfigDict:
         action_scale=0.25,
         dof_vel_scale=0.05,
         history_len=0,
+        leg_force_limit_nm=0.0,
         soft_joint_pos_limit_factor=0.95,
         noise_config=config_dict.create(
             level=1.0,
@@ -114,6 +115,16 @@ class Standing(NubzukiEnv):
             config=config,
             config_overrides=config_overrides,
         )
+        force_limit = float(self._config.leg_force_limit_nm)
+        if force_limit > 0.0:
+            for name in self.actuator_names:
+                if name in HEAD_JOINTS:
+                    continue
+                actuator_id = self._mj_model.actuator(name).id
+                self._mj_model.actuator_forcerange[actuator_id] = (
+                    -force_limit, force_limit
+                )
+            self._mjx_model = mjx.put_model(self._mj_model)
         self._post_init()
 
     def _post_init(self) -> None:

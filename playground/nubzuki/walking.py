@@ -30,7 +30,7 @@ from playground.nubzuki.standing import Standing, default_config as standing_con
 
 WALKING_STAGES = (
     "discovery", "locomotion", "sim2real_1", "sim2real_2", "sim2real_3",
-    "sim2real", "head_position_1", "head_position_2", "head_position_3",
+    "sim2real", "torque_limit", "head_position_1", "head_position_2", "head_position_3",
     "refine", "control", "turning",
 )
 
@@ -73,7 +73,10 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     config.simultaneous_head_probability = 1.0
     config.head_yaw_pitch_only = False
 
-    if stage in ("locomotion", "sim2real", "sim2real_1", "sim2real_2", "sim2real_3"):
+    if stage in (
+        "locomotion", "sim2real", "sim2real_1", "sim2real_2", "sim2real_3",
+        "torque_limit",
+    ):
         # Continue from the best gait checkpoint and learn only forward motion
         # plus curved left/right turns.  Head commands, reverse and in-place
         # turns are deliberately absent until locomotion is robust on video.
@@ -103,6 +106,13 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.head_joint_vel = 0.0
         scales.head_roll_home = 0.0
         scales.head_roll_vel = 0.0
+        if stage == "torque_limit":
+            # First isolate actuator strength from long-delay adaptation.  The
+            # original 3.23 N.m model let hip pitch sit at its stall limit for
+            # much of every step, which the moving physical servo cannot do.
+            config.leg_force_limit_nm = 2.0
+            # Total command mix: 60% straight, 20% curved, 20% stopped.
+            config.straight_command_probability = 0.75
         if stage.startswith("sim2real"):
             # Curriculum totals include the 20% stop commands.  The sampler
             # chooses straight versus turning only after the stop draw, so the

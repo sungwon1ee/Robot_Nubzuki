@@ -60,6 +60,7 @@ class NubzukiStandingRunner(BaseRunner):
             "action_scale_rad": calibration.action_scale_rad,
             "action_scales_rad": [calibration.action_scale_rad] * 14,
             "action_delay_steps": [0, 2], "home_position_rad": [0.0] * 14,
+            "leg_force_limit_nm": float(config.leg_force_limit_nm),
             "zero_command_probability": float(config.zero_command_probability),
             "reward_scales": {
                 name: float(scale)
