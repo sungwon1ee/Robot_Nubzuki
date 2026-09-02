@@ -142,6 +142,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
                 # Hold a 7- or 8-tick delay for the episode (mean 0.15 s).
                 config.noise_config.action_min_delay = 7
                 config.noise_config.action_max_delay = 9
+                config.hip_pitch_force_limit_nm = 2.2
                 scales.hip_overload = -2.0
                 scales.knee_underuse = -0.1
                 scales.walking_head_pitch_pose = -2.0
@@ -355,7 +356,11 @@ class Walking(Standing):
         )
         rewards["hip_overload"] = cost_hip_pitch_overload(
             data.actuator_force,
-            jp.maximum(self._config.leg_force_limit_nm, 2.8),
+            (
+                self._config.hip_pitch_force_limit_nm
+                if self._config.hip_pitch_force_limit_nm > 0.0
+                else jp.maximum(self._config.leg_force_limit_nm, 2.8)
+            ),
         ) * locomotion_active
         rewards["knee_underuse"] = cost_knee_underuse(
             data.actuator_force,

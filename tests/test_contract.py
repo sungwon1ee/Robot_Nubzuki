@@ -270,6 +270,7 @@ class StandingContractTests(unittest.TestCase):
         baseline = walking_config("torque_limit_1")
         relief = walking_config("hip_relief")
         self.assertEqual(relief.leg_force_limit_nm, 2.8)
+        self.assertEqual(relief.hip_pitch_force_limit_nm, 2.2)
         self.assertEqual(relief.noise_config.action_min_delay, 7)
         self.assertEqual(relief.noise_config.action_max_delay, 9)
         self.assertEqual(relief.straight_command_probability, 0.75)
@@ -285,6 +286,18 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(relief.reward_config.scales.walking_head_pitch_pose, -2.0)
         self.assertEqual(relief.walking_neck_pitch_target, -0.20)
         self.assertEqual(relief.walking_head_pitch_target, -0.14)
+        env = Walking(config=relief)
+        for name in env.actuator_names:
+            limit = env._mj_model.actuator_forcerange[
+                env._mj_model.actuator(name).id
+            ]
+            if name in HEAD_JOINTS:
+                expected = 3.23
+            elif name in ("left_hip_pitch", "right_hip_pitch"):
+                expected = 2.2
+            else:
+                expected = 2.8
+            np.testing.assert_allclose(limit, [-expected, expected])
         baseline_scales = baseline.reward_config.scales.to_dict()
         relief_scales = relief.reward_config.scales.to_dict()
         baseline_scales.pop("hip_overload")
