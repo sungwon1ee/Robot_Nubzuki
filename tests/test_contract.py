@@ -8,6 +8,7 @@ import numpy as np
 import jax
 import jax.numpy as jp
 
+from playground.common.rewards import cost_hip_pitch_overload
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
 from playground.nubzuki.controller import (
     apply_deadzone,
@@ -260,6 +261,30 @@ class StandingContractTests(unittest.TestCase):
                 ]
                 expected = 3.23 if name in HEAD_JOINTS else expected_limit
                 np.testing.assert_allclose(limit, [-expected, expected])
+
+    def test_hip_relief_changes_only_hip_overload_penalty(self):
+        baseline = walking_config("torque_limit_1")
+        relief = walking_config("hip_relief")
+        self.assertEqual(relief.leg_force_limit_nm, 2.8)
+        self.assertEqual(relief.noise_config.action_min_delay, 4)
+        self.assertEqual(relief.noise_config.action_max_delay, 7)
+        self.assertEqual(relief.straight_command_probability, 0.75)
+        self.assertEqual(baseline.reward_config.scales.hip_overload, 0.0)
+        self.assertEqual(relief.reward_config.scales.hip_overload, -2.0)
+        baseline_scales = baseline.reward_config.scales.to_dict()
+        relief_scales = relief.reward_config.scales.to_dict()
+        baseline_scales.pop("hip_overload")
+        relief_scales.pop("hip_overload")
+        self.assertEqual(baseline_scales, relief_scales)
+
+        torques = jp.zeros(14).at[2].set(2.8).at[11].set(-2.8)
+        self.assertAlmostEqual(
+            float(cost_hip_pitch_overload(torques, 2.8)), 0.125, places=6
+        )
+        threshold = jp.zeros(14).at[2].set(2.1).at[11].set(-2.1)
+        self.assertAlmostEqual(
+            float(cost_hip_pitch_overload(threshold, 2.8)), 0.0, places=6
+        )
 
     def test_action_delay_is_sampled_once_per_episode(self):
         env = Walking(config=walking_config("sim2real_1"))

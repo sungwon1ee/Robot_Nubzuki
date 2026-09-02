@@ -132,6 +132,18 @@ def cost_torques(torques: jax.Array) -> jax.Array:
     # return jp.nan_to_num(jp.sum(jp.abs(torques)))
 
 
+def cost_hip_pitch_overload(
+    torques: jax.Array,
+    force_limit_nm: float,
+    threshold_ratio: float = 0.75,
+) -> jax.Array:
+    """Penalize only hip-pitch effort above a fraction of the force limit."""
+    hip_pitch = jp.abs(torques[jp.array([2, 11])])
+    utilization = hip_pitch / jp.maximum(force_limit_nm, 1.0e-6)
+    overload = jp.maximum(utilization - threshold_ratio, 0.0)
+    return jp.nan_to_num(jp.sum(jp.square(overload)))
+
+
 def cost_energy(qvel: jax.Array, qfrc_actuator: jax.Array) -> jax.Array:
     return jp.nan_to_num(jp.sum(jp.abs(qvel) * jp.abs(qfrc_actuator)))
 
