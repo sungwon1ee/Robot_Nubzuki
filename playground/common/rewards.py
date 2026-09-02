@@ -185,6 +185,18 @@ def cost_head_roll_home(joint_position: jax.Array) -> jax.Array:
     return jp.nan_to_num(jp.square(joint_position[8]))
 
 
+def cost_walking_head_pitch_pose(
+    joint_position: jax.Array,
+    neck_pitch_target: float,
+    head_pitch_target: float,
+) -> jax.Array:
+    """Keep the two serial head-pitch joints near a stable walking pose."""
+    error = joint_position[jp.array([5, 6])] - jp.array(
+        [neck_pitch_target, head_pitch_target]
+    )
+    return jp.nan_to_num(jp.sum(jp.square(error)))
+
+
 # Other rewards.
 
 

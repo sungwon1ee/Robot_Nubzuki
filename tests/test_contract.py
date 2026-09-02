@@ -8,7 +8,11 @@ import numpy as np
 import jax
 import jax.numpy as jp
 
-from playground.common.rewards import cost_hip_pitch_overload, cost_knee_underuse
+from playground.common.rewards import (
+    cost_hip_pitch_overload,
+    cost_knee_underuse,
+    cost_walking_head_pitch_pose,
+)
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
 from playground.nubzuki.controller import (
     apply_deadzone,
@@ -266,19 +270,27 @@ class StandingContractTests(unittest.TestCase):
         baseline = walking_config("torque_limit_1")
         relief = walking_config("hip_relief")
         self.assertEqual(relief.leg_force_limit_nm, 2.8)
-        self.assertEqual(relief.noise_config.action_min_delay, 4)
-        self.assertEqual(relief.noise_config.action_max_delay, 7)
+        self.assertEqual(relief.noise_config.action_min_delay, 7)
+        self.assertEqual(relief.noise_config.action_max_delay, 9)
         self.assertEqual(relief.straight_command_probability, 0.75)
         self.assertEqual(baseline.reward_config.scales.hip_overload, 0.0)
         self.assertEqual(relief.reward_config.scales.hip_overload, -2.0)
         self.assertEqual(baseline.reward_config.scales.knee_underuse, 0.0)
         self.assertEqual(relief.reward_config.scales.knee_underuse, -0.1)
+        self.assertEqual(
+            baseline.reward_config.scales.walking_head_pitch_pose, 0.0
+        )
+        self.assertEqual(relief.reward_config.scales.walking_head_pitch_pose, -2.0)
+        self.assertEqual(relief.walking_neck_pitch_target, -0.20)
+        self.assertEqual(relief.walking_head_pitch_target, -0.14)
         baseline_scales = baseline.reward_config.scales.to_dict()
         relief_scales = relief.reward_config.scales.to_dict()
         baseline_scales.pop("hip_overload")
         relief_scales.pop("hip_overload")
         baseline_scales.pop("knee_underuse")
         relief_scales.pop("knee_underuse")
+        baseline_scales.pop("walking_head_pitch_pose")
+        relief_scales.pop("walking_head_pitch_pose")
         self.assertEqual(baseline_scales, relief_scales)
 
         torques = jp.zeros(14).at[2].set(2.8).at[11].set(-2.8)
@@ -296,6 +308,12 @@ class StandingContractTests(unittest.TestCase):
         ten_percent = jp.zeros(14).at[3].set(0.28).at[12].set(-0.28)
         self.assertAlmostEqual(
             float(cost_knee_underuse(ten_percent, 2.8)), 0.0, places=6
+        )
+        target_pose = jp.zeros(14).at[5].set(-0.20).at[6].set(-0.14)
+        self.assertAlmostEqual(
+            float(cost_walking_head_pitch_pose(target_pose, -0.20, -0.14)),
+            0.0,
+            places=6,
         )
 
     def test_action_delay_is_sampled_once_per_episode(self):

@@ -17,6 +17,7 @@ from playground.common.rewards import (
     cost_head_roll_velocity,
     cost_hip_pitch_overload,
     cost_knee_underuse,
+    cost_walking_head_pitch_pose,
     cost_yaw_rate,
     reward_feet_air_time_window,
     reward_forward_walking_composite,
@@ -69,6 +70,9 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     scales.head_roll_vel = 0.0
     scales.hip_overload = 0.0
     scales.knee_underuse = 0.0
+    scales.walking_head_pitch_pose = 0.0
+    config.walking_neck_pitch_target = 0.0
+    config.walking_head_pitch_target = 0.0
     config.yaw_rate_range_rad_s = [0.0, 0.0]
     config.min_turn_yaw_rate_rad_s = 0.0
     config.yaw_tracking_sigma = 0.1
@@ -133,10 +137,16 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
             # Total command mix: 60% straight, 20% curved, 20% stopped.
             config.straight_command_probability = 0.75
             if stage == "hip_relief":
-                # Preserve torque_limit_1 exactly and discourage only sustained
+                # Keep the 2.8 N.m strength/command mix and discourage sustained
                 # hip-pitch effort above 75% of the available actuator torque.
+                # Hold a 7- or 8-tick delay for the episode (mean 0.15 s).
+                config.noise_config.action_min_delay = 7
+                config.noise_config.action_max_delay = 9
                 scales.hip_overload = -2.0
                 scales.knee_underuse = -0.1
+                scales.walking_head_pitch_pose = -2.0
+                config.walking_neck_pitch_target = -0.20
+                config.walking_head_pitch_target = -0.14
         if stage.startswith("sim2real"):
             # Curriculum totals include the 20% stop commands.  The sampler
             # chooses straight versus turning only after the stop draw, so the
@@ -346,6 +356,11 @@ class Walking(Standing):
         rewards["knee_underuse"] = cost_knee_underuse(
             data.actuator_force,
             jp.maximum(self._config.leg_force_limit_nm, 2.8),
+        ) * locomotion_active
+        rewards["walking_head_pitch_pose"] = cost_walking_head_pitch_pose(
+            joint_pos,
+            self._config.walking_neck_pitch_target,
+            self._config.walking_head_pitch_target,
         ) * locomotion_active
         rewards["yaw_rate"] = cost_yaw_rate(self.get_gyro(data))
         turning_command = jp.abs(info["command"][2]) > 0.05
