@@ -16,6 +16,7 @@ from playground.common.rewards import (
     cost_head_roll_home,
     cost_head_roll_velocity,
     cost_hip_pitch_overload,
+    cost_knee_underuse,
     cost_yaw_rate,
     reward_feet_air_time_window,
     reward_forward_walking_composite,
@@ -67,6 +68,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     scales.head_roll_home = 0.0
     scales.head_roll_vel = 0.0
     scales.hip_overload = 0.0
+    scales.knee_underuse = 0.0
     config.yaw_rate_range_rad_s = [0.0, 0.0]
     config.min_turn_yaw_rate_rad_s = 0.0
     config.yaw_tracking_sigma = 0.1
@@ -134,6 +136,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
                 # Preserve torque_limit_1 exactly and discourage only sustained
                 # hip-pitch effort above 75% of the available actuator torque.
                 scales.hip_overload = -2.0
+                scales.knee_underuse = -0.1
         if stage.startswith("sim2real"):
             # Curriculum totals include the 20% stop commands.  The sampler
             # chooses straight versus turning only after the stop draw, so the
@@ -337,6 +340,10 @@ class Walking(Standing):
             self.get_global_angvel(data)
         )
         rewards["hip_overload"] = cost_hip_pitch_overload(
+            data.actuator_force,
+            jp.maximum(self._config.leg_force_limit_nm, 2.8),
+        ) * locomotion_active
+        rewards["knee_underuse"] = cost_knee_underuse(
             data.actuator_force,
             jp.maximum(self._config.leg_force_limit_nm, 2.8),
         ) * locomotion_active

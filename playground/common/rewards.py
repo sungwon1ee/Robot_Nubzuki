@@ -144,6 +144,18 @@ def cost_hip_pitch_overload(
     return jp.nan_to_num(jp.sum(jp.square(overload)))
 
 
+def cost_knee_underuse(
+    torques: jax.Array,
+    force_limit_nm: float,
+    minimum_ratio: float = 0.10,
+) -> jax.Array:
+    """Penalize each knee actuator only while it uses under the target ratio."""
+    knee = jp.abs(torques[jp.array([3, 12])])
+    utilization = knee / jp.maximum(force_limit_nm, 1.0e-6)
+    shortfall = jp.maximum(minimum_ratio - utilization, 0.0) / minimum_ratio
+    return jp.nan_to_num(jp.mean(jp.square(shortfall)))
+
+
 def cost_energy(qvel: jax.Array, qfrc_actuator: jax.Array) -> jax.Array:
     return jp.nan_to_num(jp.sum(jp.abs(qvel) * jp.abs(qfrc_actuator)))
 

@@ -8,7 +8,7 @@ import numpy as np
 import jax
 import jax.numpy as jp
 
-from playground.common.rewards import cost_hip_pitch_overload
+from playground.common.rewards import cost_hip_pitch_overload, cost_knee_underuse
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
 from playground.nubzuki.controller import (
     apply_deadzone,
@@ -271,10 +271,14 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(relief.straight_command_probability, 0.75)
         self.assertEqual(baseline.reward_config.scales.hip_overload, 0.0)
         self.assertEqual(relief.reward_config.scales.hip_overload, -2.0)
+        self.assertEqual(baseline.reward_config.scales.knee_underuse, 0.0)
+        self.assertEqual(relief.reward_config.scales.knee_underuse, -0.1)
         baseline_scales = baseline.reward_config.scales.to_dict()
         relief_scales = relief.reward_config.scales.to_dict()
         baseline_scales.pop("hip_overload")
         relief_scales.pop("hip_overload")
+        baseline_scales.pop("knee_underuse")
+        relief_scales.pop("knee_underuse")
         self.assertEqual(baseline_scales, relief_scales)
 
         torques = jp.zeros(14).at[2].set(2.8).at[11].set(-2.8)
@@ -284,6 +288,14 @@ class StandingContractTests(unittest.TestCase):
         threshold = jp.zeros(14).at[2].set(2.1).at[11].set(-2.1)
         self.assertAlmostEqual(
             float(cost_hip_pitch_overload(threshold, 2.8)), 0.0, places=6
+        )
+        unused_knees = jp.zeros(14)
+        self.assertAlmostEqual(
+            float(cost_knee_underuse(unused_knees, 2.8)), 1.0, places=6
+        )
+        ten_percent = jp.zeros(14).at[3].set(0.28).at[12].set(-0.28)
+        self.assertAlmostEqual(
+            float(cost_knee_underuse(ten_percent, 2.8)), 0.0, places=6
         )
 
     def test_action_delay_is_sampled_once_per_episode(self):
