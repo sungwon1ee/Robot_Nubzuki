@@ -93,6 +93,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--action-delay", type=float, default=0.0, metavar="SECONDS",
         help="delay actuator commands in MuJoCo (for example 0.2)",
     )
+    sim.add_argument(
+        "--show-torques", action="store_true",
+        help="print live leg-joint torque and actuator-limit utilization",
+    )
     identify = sub.add_parser("identify-head", help="measure joystick and head response")
     identify.add_argument("--port", default="/dev/ttyACM0")
     identify.add_argument("--output", default="config/head_dynamics.json")
@@ -144,7 +148,7 @@ def main() -> None:
         run_simulation(
             args.policy, args.calibration, args.head_profile,
             args.control, args.host, args.port, args.floor_friction,
-            args.action_delay,
+            args.action_delay, args.show_torques,
         )
     elif args.command == "identify-head":
         from playground.nubzuki.calibration import NubzukiCalibration

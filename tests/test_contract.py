@@ -436,6 +436,12 @@ class StandingContractTests(unittest.TestCase):
         )
         self.assertEqual(args.action_delay, 0.2)
 
+    def test_sim_accepts_live_torque_display(self):
+        args = build_parser().parse_args(
+            ["sim", "--policy", "policy.onnx", "--show-torques"]
+        )
+        self.assertTrue(args.show_torques)
+
     def test_identify_head_supports_phone_control(self):
         args = build_parser().parse_args(
             ["identify-head", "--control", "phone"]

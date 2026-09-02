@@ -22,6 +22,12 @@ from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectory
 from playground.nubzuki.policy import ObservationBuilder, StandingPolicy
 
 
+TORQUE_JOINTS = (
+    "left_hip_pitch", "left_knee", "left_ankle",
+    "right_hip_pitch", "right_knee", "right_ankle",
+)
+
+
 def _sensor(model, data, name):
     sensor_id = model.sensor(name).id
     address = model.sensor_adr[sensor_id]
@@ -79,6 +85,7 @@ def run_simulation(
     port: int = 8765,
     floor_friction: float | None = None,
     action_delay: float = 0.0,
+    show_torques: bool = False,
 ) -> None:
     calibration = NubzukiCalibration(calibration_path)
     profile, may_check_hash = _load_profile(head_profile_path, calibration)
@@ -117,6 +124,13 @@ def run_simulation(
             f"Action delay override: {action_delay_steps} control steps "
             f"({action_delay_steps * dt:.3f} s)"
         )
+    torque_ids = np.asarray([model.actuator(name).id for name in TORQUE_JOINTS])
+    torque_limits = np.max(np.abs(model.actuator_forcerange[torque_ids]), axis=1)
+    torque_window_peak = np.zeros(len(TORQUE_JOINTS))
+    torque_print_interval = max(1, int(round(calibration.control_frequency_hz / 5)))
+    torque_counter = 0
+    if show_torques:
+        print("Live torque: 5 Hz window peak, N.m and percent of MuJoCo force limit")
     announced = False
     try:
         with mujoco.viewer.launch_passive(model, data) as viewer:
@@ -155,8 +169,33 @@ def run_simulation(
                 action_queue.append(action.copy())
                 delayed_action = action_queue[0]
                 data.ctrl[:] = delayed_action * calibration.action_scale_rad
+                control_peak = np.zeros(len(TORQUE_JOINTS))
                 for _ in range(10):
                     mujoco.mj_step(model, data)
+                    control_peak = np.maximum(
+                        control_peak, np.abs(np.asarray(data.actuator_force)[torque_ids])
+                    )
+                if show_torques:
+                    torque_window_peak = np.maximum(torque_window_peak, control_peak)
+                    torque_counter += 1
+                    if torque_counter >= torque_print_interval:
+                        percentages = np.divide(
+                            100.0 * torque_window_peak,
+                            torque_limits,
+                            out=np.zeros_like(torque_window_peak),
+                            where=torque_limits > 0.0,
+                        )
+                        values = " | ".join(
+                            f"{side}{joint} {torque_window_peak[index]:.2f} "
+                            f"({percentages[index]:.0f}%)"
+                            for index, (side, joint) in enumerate((
+                                ("L", "hip"), ("L", "knee"), ("L", "ankle"),
+                                ("R", "hip"), ("R", "knee"), ("R", "ankle"),
+                            ))
+                        )
+                        print(f"\rTorque | {values}", end="", flush=True)
+                        torque_window_peak.fill(0.0)
+                        torque_counter = 0
                 # Mouse panning changes the viewer's look-at point (and can
                 # switch camera mode), so restore only the tracking target.
                 # Rotation and zoom remain user-adjustable.
@@ -166,4 +205,6 @@ def run_simulation(
                 viewer.sync()
                 time.sleep(max(0.0, dt - (time.monotonic() - started)))
     finally:
+        if show_torques:
+            print()
         controller.close()
