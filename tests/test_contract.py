@@ -240,16 +240,24 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(alias.straight_command_probability,
                          final.straight_command_probability)
 
-    def test_torque_limit_stage_caps_leg_actuators(self):
-        config = walking_config("torque_limit")
-        self.assertEqual(config.leg_force_limit_nm, 2.0)
-        env = Walking(config=config)
-        for name in env.actuator_names:
-            limit = env._mj_model.actuator_forcerange[
-                env._mj_model.actuator(name).id
-            ]
-            expected = 3.23 if name in HEAD_JOINTS else 2.0
-            np.testing.assert_allclose(limit, [-expected, expected])
+    def test_torque_limit_curriculum_caps_only_leg_actuators(self):
+        expected_stages = (
+            ("torque_limit_1", 2.8),
+            ("torque_limit_2", 2.5),
+            ("torque_limit_3", 2.2),
+            ("torque_limit", 2.0),
+        )
+        for stage, expected_limit in expected_stages:
+            config = walking_config(stage)
+            self.assertEqual(config.leg_force_limit_nm, expected_limit)
+            self.assertEqual(config.straight_command_probability, 0.75)
+            env = Walking(config=config)
+            for name in env.actuator_names:
+                limit = env._mj_model.actuator_forcerange[
+                    env._mj_model.actuator(name).id
+                ]
+                expected = 3.23 if name in HEAD_JOINTS else expected_limit
+                np.testing.assert_allclose(limit, [-expected, expected])
 
     def test_action_delay_is_sampled_once_per_episode(self):
         env = Walking(config=walking_config("sim2real_1"))

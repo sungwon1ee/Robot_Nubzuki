@@ -35,7 +35,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--walk-stage",
         choices=(
             "discovery", "locomotion", "sim2real_1", "sim2real_2", "sim2real_3",
-            "sim2real", "torque_limit", "head_position_1", "head_position_2",
+            "sim2real", "torque_limit_1", "torque_limit_2", "torque_limit_3",
+            "torque_limit", "head_position_1", "head_position_2",
             "head_position_3",
             "refine", "control", "turning",
         ),

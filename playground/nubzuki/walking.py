@@ -30,7 +30,8 @@ from playground.nubzuki.standing import Standing, default_config as standing_con
 
 WALKING_STAGES = (
     "discovery", "locomotion", "sim2real_1", "sim2real_2", "sim2real_3",
-    "sim2real", "torque_limit", "head_position_1", "head_position_2", "head_position_3",
+    "sim2real", "torque_limit_1", "torque_limit_2", "torque_limit_3",
+    "torque_limit", "head_position_1", "head_position_2", "head_position_3",
     "refine", "control", "turning",
 )
 
@@ -75,7 +76,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
 
     if stage in (
         "locomotion", "sim2real", "sim2real_1", "sim2real_2", "sim2real_3",
-        "torque_limit",
+        "torque_limit_1", "torque_limit_2", "torque_limit_3", "torque_limit",
     ):
         # Continue from the best gait checkpoint and learn only forward motion
         # plus curved left/right turns.  Head commands, reverse and in-place
@@ -106,11 +107,18 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.head_joint_vel = 0.0
         scales.head_roll_home = 0.0
         scales.head_roll_vel = 0.0
-        if stage == "torque_limit":
+        if stage.startswith("torque_limit"):
             # First isolate actuator strength from long-delay adaptation.  The
             # original 3.23 N.m model let hip pitch sit at its stall limit for
             # much of every step, which the moving physical servo cannot do.
-            config.leg_force_limit_nm = 2.0
+            force_limits = {
+                "torque_limit_1": 2.8,
+                "torque_limit_2": 2.5,
+                "torque_limit_3": 2.2,
+                # Backward-compatible final stress stage.
+                "torque_limit": 2.0,
+            }
+            config.leg_force_limit_nm = force_limits[stage]
             # Total command mix: 60% straight, 20% curved, 20% stopped.
             config.straight_command_probability = 0.75
         if stage.startswith("sim2real"):
