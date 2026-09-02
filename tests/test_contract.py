@@ -266,7 +266,7 @@ class StandingContractTests(unittest.TestCase):
                 expected = 3.23 if name in HEAD_JOINTS else expected_limit
                 np.testing.assert_allclose(limit, [-expected, expected])
 
-    def test_hip_relief_changes_only_hip_overload_penalty(self):
+    def test_hip_relief_curriculum(self):
         baseline = walking_config("torque_limit_1")
         relief = walking_config("hip_relief")
         self.assertEqual(relief.leg_force_limit_nm, 2.8)
@@ -277,6 +277,8 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(relief.reward_config.scales.hip_overload, -2.0)
         self.assertEqual(baseline.reward_config.scales.knee_underuse, 0.0)
         self.assertEqual(relief.reward_config.scales.knee_underuse, -0.1)
+        self.assertEqual(baseline.reward_config.scales.orientation, 0.0)
+        self.assertEqual(relief.reward_config.scales.orientation, -3.0)
         self.assertEqual(
             baseline.reward_config.scales.walking_head_pitch_pose, 0.0
         )
@@ -291,6 +293,8 @@ class StandingContractTests(unittest.TestCase):
         relief_scales.pop("knee_underuse")
         baseline_scales.pop("walking_head_pitch_pose")
         relief_scales.pop("walking_head_pitch_pose")
+        baseline_scales.pop("orientation")
+        relief_scales.pop("orientation")
         self.assertEqual(baseline_scales, relief_scales)
 
         torques = jp.zeros(14).at[2].set(2.8).at[11].set(-2.8)
