@@ -251,6 +251,8 @@ class StandingContractTests(unittest.TestCase):
             config = walking_config(stage)
             self.assertEqual(config.leg_force_limit_nm, expected_limit)
             self.assertEqual(config.straight_command_probability, 0.75)
+            self.assertEqual(config.noise_config.action_min_delay, 4)
+            self.assertEqual(config.noise_config.action_max_delay, 7)
             env = Walking(config=config)
             for name in env.actuator_names:
                 limit = env._mj_model.actuator_forcerange[

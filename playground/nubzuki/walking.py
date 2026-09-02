@@ -119,6 +119,10 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
                 "torque_limit": 2.0,
             }
             config.leg_force_limit_nm = force_limits[stage]
+            # Keep the actuator-response condition that already transferred
+            # well: one fixed 4--6 tick delay per episode (mean 0.10 s).
+            config.noise_config.action_min_delay = 4
+            config.noise_config.action_max_delay = 7
             # Total command mix: 60% straight, 20% curved, 20% stopped.
             config.straight_command_probability = 0.75
         if stage.startswith("sim2real"):
