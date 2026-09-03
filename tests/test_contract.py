@@ -358,6 +358,16 @@ class StandingContractTests(unittest.TestCase):
         self.assertGreater(float(cost_head_forward_tilt(forward_head)), 0.0)
         self.assertGreater(float(cost_knee_motion_underuse(jp.zeros(14))), 0.0)
 
+    def test_hip_relief_delay100_changes_only_delay(self):
+        no_delay = walking_config("hip_relief")
+        delayed = walking_config("hip_relief_delay100")
+        self.assertEqual(delayed.noise_config.action_min_delay, 4)
+        self.assertEqual(delayed.noise_config.action_max_delay, 7)
+        no_delay.noise_config.action_min_delay = 4
+        no_delay.noise_config.action_max_delay = 7
+        no_delay.walking_stage = "hip_relief_delay100"
+        self.assertEqual(no_delay.to_dict(), delayed.to_dict())
+
     def test_action_delay_is_sampled_once_per_episode(self):
         env = Walking(config=walking_config("sim2real_1"))
         state = env.reset(jax.random.PRNGKey(101))

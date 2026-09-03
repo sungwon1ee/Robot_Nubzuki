@@ -37,7 +37,7 @@ from playground.nubzuki.standing import Standing, default_config as standing_con
 WALKING_STAGES = (
     "discovery", "locomotion", "sim2real_1", "sim2real_2", "sim2real_3",
     "sim2real", "torque_limit_1", "torque_limit_2", "torque_limit_3",
-    "hip_relief",
+    "hip_relief", "hip_relief_delay100",
     "torque_limit", "head_position_1", "head_position_2", "head_position_3",
     "refine", "control", "turning",
 )
@@ -92,7 +92,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     if stage in (
         "locomotion", "sim2real", "sim2real_1", "sim2real_2", "sim2real_3",
         "torque_limit_1", "torque_limit_2", "torque_limit_3", "torque_limit",
-        "hip_relief",
+        "hip_relief", "hip_relief_delay100",
     ):
         # Continue from the best gait checkpoint and learn only forward motion
         # plus curved left/right turns.  Head commands, reverse and in-place
@@ -123,7 +123,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
         scales.head_joint_vel = 0.0
         scales.head_roll_home = 0.0
         scales.head_roll_vel = 0.0
-        if stage.startswith("torque_limit") or stage == "hip_relief":
+        if stage.startswith("torque_limit") or stage.startswith("hip_relief"):
             # First isolate actuator strength from long-delay adaptation.  The
             # original 3.23 N.m model let hip pitch sit at its stall limit for
             # much of every step, which the moving physical servo cannot do.
@@ -134,6 +134,7 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
                 # Backward-compatible final stress stage.
                 "torque_limit": 2.0,
                 "hip_relief": 2.8,
+                "hip_relief_delay100": 2.8,
             }
             config.leg_force_limit_nm = force_limits[stage]
             # Keep the actuator-response condition that already transferred
@@ -142,12 +143,13 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
             config.noise_config.action_max_delay = 7
             # Total command mix: 60% straight, 20% curved, 20% stopped.
             config.straight_command_probability = 0.75
-            if stage == "hip_relief":
+            if stage.startswith("hip_relief"):
                 # Keep the 2.8 N.m strength/command mix and discourage sustained
                 # hip-pitch effort above 75% of the available actuator torque.
-                # First relearn the mechanics without actuator delay.
-                config.noise_config.action_min_delay = 0
-                config.noise_config.action_max_delay = 1
+                if stage == "hip_relief":
+                    # First relearn the mechanics without actuator delay.
+                    config.noise_config.action_min_delay = 0
+                    config.noise_config.action_max_delay = 1
                 config.hip_pitch_force_limit_nm = 2.5
                 scales.hip_overload = -2.0
                 scales.knee_underuse = 0.0
