@@ -64,6 +64,15 @@ def cost_orientation(torso_zaxis: jax.Array) -> jax.Array:
     return jp.nan_to_num(jp.sum(jp.square(torso_zaxis[:2])))
 
 
+def cost_trunk_pitch_tilt(
+    torso_zaxis: jax.Array,
+    free_tilt_sine: float,
+) -> jax.Array:
+    """Penalize trunk pitch only after a small upright tolerance."""
+    excess = jp.maximum(jp.abs(torso_zaxis[0]) - free_tilt_sine, 0.0)
+    return jp.nan_to_num(jp.square(excess))
+
+
 def reward_upright(torso_zaxis: jax.Array, std: float) -> jax.Array:
     """Microduck-style Gaussian reward for keeping the trunk vertical."""
     tilt_error = jp.sum(jp.square(torso_zaxis[:2]))
@@ -156,6 +165,17 @@ def cost_knee_underuse(
     return jp.nan_to_num(jp.mean(jp.square(shortfall)))
 
 
+def cost_knee_motion_underuse(
+    joint_velocity: jax.Array,
+    minimum_speed_rad_s: float = 0.30,
+) -> jax.Array:
+    """Penalize locomotion with nearly stationary knee joints."""
+    knee_velocity = joint_velocity[jp.array([3, 12])]
+    rms_speed = jp.sqrt(jp.mean(jp.square(knee_velocity)) + 1.0e-8)
+    shortfall = jp.maximum(minimum_speed_rad_s - rms_speed, 0.0)
+    return jp.nan_to_num(jp.square(shortfall / minimum_speed_rad_s))
+
+
 def cost_energy(qvel: jax.Array, qfrc_actuator: jax.Array) -> jax.Array:
     return jp.nan_to_num(jp.sum(jp.abs(qvel) * jp.abs(qfrc_actuator)))
 
@@ -195,6 +215,12 @@ def cost_walking_head_pitch_pose(
         [neck_pitch_target, head_pitch_target]
     )
     return jp.nan_to_num(jp.sum(jp.square(error)))
+
+
+def cost_head_forward_tilt(joint_position: jax.Array) -> jax.Array:
+    """Penalize any forward relative pitch across the serial head joints."""
+    forward_pitch = joint_position[5] + joint_position[6]
+    return jp.nan_to_num(jp.square(jp.maximum(forward_pitch, 0.0)))
 
 
 # Other rewards.

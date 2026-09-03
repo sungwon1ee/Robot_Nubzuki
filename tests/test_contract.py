@@ -10,7 +10,10 @@ import jax.numpy as jp
 
 from playground.common.rewards import (
     cost_hip_pitch_overload,
+    cost_head_forward_tilt,
+    cost_knee_motion_underuse,
     cost_knee_underuse,
+    cost_trunk_pitch_tilt,
     cost_walking_head_pitch_pose,
 )
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
@@ -270,16 +273,19 @@ class StandingContractTests(unittest.TestCase):
         baseline = walking_config("torque_limit_1")
         relief = walking_config("hip_relief")
         self.assertEqual(relief.leg_force_limit_nm, 2.8)
-        self.assertEqual(relief.hip_pitch_force_limit_nm, 2.2)
-        self.assertEqual(relief.noise_config.action_min_delay, 7)
-        self.assertEqual(relief.noise_config.action_max_delay, 9)
+        self.assertEqual(relief.hip_pitch_force_limit_nm, 2.5)
+        self.assertEqual(relief.noise_config.action_min_delay, 0)
+        self.assertEqual(relief.noise_config.action_max_delay, 1)
         self.assertEqual(relief.straight_command_probability, 0.75)
         self.assertEqual(baseline.reward_config.scales.hip_overload, 0.0)
         self.assertEqual(relief.reward_config.scales.hip_overload, -2.0)
         self.assertEqual(baseline.reward_config.scales.knee_underuse, 0.0)
-        self.assertEqual(relief.reward_config.scales.knee_underuse, -0.1)
+        self.assertEqual(relief.reward_config.scales.knee_underuse, 0.0)
+        self.assertEqual(relief.reward_config.scales.knee_motion_underuse, -0.2)
         self.assertEqual(baseline.reward_config.scales.orientation, 0.0)
-        self.assertEqual(relief.reward_config.scales.orientation, -10.0)
+        self.assertEqual(relief.reward_config.scales.orientation, 0.0)
+        self.assertEqual(relief.reward_config.scales.trunk_pitch_tilt, -20.0)
+        self.assertEqual(relief.reward_config.scales.head_forward_tilt, -20.0)
         self.assertEqual(
             baseline.reward_config.scales.walking_head_pitch_pose, 0.0
         )
@@ -294,7 +300,7 @@ class StandingContractTests(unittest.TestCase):
             if name in HEAD_JOINTS:
                 expected = 3.23
             elif name in ("left_hip_pitch", "right_hip_pitch"):
-                expected = 2.2
+                expected = 2.5
             else:
                 expected = 2.8
             np.testing.assert_allclose(limit, [-expected, expected])
@@ -308,6 +314,12 @@ class StandingContractTests(unittest.TestCase):
         relief_scales.pop("walking_head_pitch_pose")
         baseline_scales.pop("orientation")
         relief_scales.pop("orientation")
+        baseline_scales.pop("knee_motion_underuse")
+        relief_scales.pop("knee_motion_underuse")
+        baseline_scales.pop("trunk_pitch_tilt")
+        relief_scales.pop("trunk_pitch_tilt")
+        baseline_scales.pop("head_forward_tilt")
+        relief_scales.pop("head_forward_tilt")
         self.assertEqual(baseline_scales, relief_scales)
 
         torques = jp.zeros(14).at[2].set(2.8).at[11].set(-2.8)
@@ -332,6 +344,19 @@ class StandingContractTests(unittest.TestCase):
             0.0,
             places=6,
         )
+        self.assertAlmostEqual(
+            float(cost_trunk_pitch_tilt(jp.array([0.04, 0.0, 1.0]), jp.sin(jp.deg2rad(3.0)))),
+            0.0,
+            places=6,
+        )
+        self.assertGreater(
+            float(cost_trunk_pitch_tilt(jp.array([0.10, 0.0, 1.0]), jp.sin(jp.deg2rad(3.0)))),
+            0.0,
+        )
+        self.assertEqual(float(cost_head_forward_tilt(target_pose)), 0.0)
+        forward_head = jp.zeros(14).at[5].set(0.05)
+        self.assertGreater(float(cost_head_forward_tilt(forward_head)), 0.0)
+        self.assertGreater(float(cost_knee_motion_underuse(jp.zeros(14))), 0.0)
 
     def test_action_delay_is_sampled_once_per_episode(self):
         env = Walking(config=walking_config("sim2real_1"))

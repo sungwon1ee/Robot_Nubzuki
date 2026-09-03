@@ -16,7 +16,10 @@ from playground.common.rewards import (
     cost_head_roll_home,
     cost_head_roll_velocity,
     cost_hip_pitch_overload,
+    cost_head_forward_tilt,
+    cost_knee_motion_underuse,
     cost_knee_underuse,
+    cost_trunk_pitch_tilt,
     cost_walking_head_pitch_pose,
     cost_yaw_rate,
     reward_feet_air_time_window,
@@ -71,6 +74,9 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
     scales.hip_overload = 0.0
     scales.knee_underuse = 0.0
     scales.walking_head_pitch_pose = 0.0
+    scales.head_forward_tilt = 0.0
+    scales.knee_motion_underuse = 0.0
+    scales.trunk_pitch_tilt = 0.0
     config.walking_neck_pitch_target = 0.0
     config.walking_head_pitch_target = 0.0
     config.yaw_rate_range_rad_s = [0.0, 0.0]
@@ -139,17 +145,17 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
             if stage == "hip_relief":
                 # Keep the 2.8 N.m strength/command mix and discourage sustained
                 # hip-pitch effort above 75% of the available actuator torque.
-                # Hold a 7- or 8-tick delay for the episode (mean 0.15 s).
-                config.noise_config.action_min_delay = 7
-                config.noise_config.action_max_delay = 9
-                config.hip_pitch_force_limit_nm = 2.2
+                # First relearn the mechanics without actuator delay.
+                config.noise_config.action_min_delay = 0
+                config.noise_config.action_max_delay = 1
+                config.hip_pitch_force_limit_nm = 2.5
                 scales.hip_overload = -2.0
-                scales.knee_underuse = -0.1
+                scales.knee_underuse = 0.0
+                scales.knee_motion_underuse = -0.2
                 scales.walking_head_pitch_pose = -5.0
-                # A direct tilt cost prevents forward lean from becoming the
-                # cheap way to satisfy the velocity command.  Unlike a positive
-                # upright bonus, it cannot be farmed by standing still.
-                scales.orientation = -10.0
+                scales.head_forward_tilt = -20.0
+                scales.trunk_pitch_tilt = -20.0
+                scales.orientation = 0.0
                 config.walking_neck_pitch_target = -0.20
                 config.walking_head_pitch_target = -0.14
         if stage.startswith("sim2real"):
@@ -354,6 +360,9 @@ class Walking(Standing):
         rewards["body_ang_vel"] = cost_ang_vel_xy(
             self.get_global_angvel(data)
         )
+        rewards["trunk_pitch_tilt"] = cost_trunk_pitch_tilt(
+            gravity, jp.sin(jp.deg2rad(3.0))
+        ) * locomotion_active
         rewards["hip_overload"] = cost_hip_pitch_overload(
             data.actuator_force,
             (
@@ -366,10 +375,16 @@ class Walking(Standing):
             data.actuator_force,
             jp.maximum(self._config.leg_force_limit_nm, 2.8),
         ) * locomotion_active
+        rewards["knee_motion_underuse"] = cost_knee_motion_underuse(
+            self.get_actuator_joints_qvel(data.qvel)
+        ) * locomotion_active
         rewards["walking_head_pitch_pose"] = cost_walking_head_pitch_pose(
             joint_pos,
             self._config.walking_neck_pitch_target,
             self._config.walking_head_pitch_target,
+        ) * locomotion_active
+        rewards["head_forward_tilt"] = cost_head_forward_tilt(
+            joint_pos
         ) * locomotion_active
         rewards["yaw_rate"] = cost_yaw_rate(self.get_gyro(data))
         turning_command = jp.abs(info["command"][2]) > 0.05
