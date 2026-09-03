@@ -19,3 +19,4 @@ def test_bam_stage_does_not_enable_head_commands():
     assert 'head.ranges = ((0.0, 0.0),) * 4' in tasks
     assert 'twist.ranges.lin_vel_x = (0.04, 0.18)' in tasks
     assert 'twist.ranges.ang_vel_z = (-0.70, 0.70)' in tasks
+    assert 'cfg.curriculum.pop("standing_envs"' not in tasks

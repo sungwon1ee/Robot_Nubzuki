@@ -54,15 +54,15 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     # Nubzuki's neutral root height is encoded in its XML at 0.205 m.
     cfg.events["reset_base"].params["pose_range"]["z"] = (0.0, 0.0)
 
-    # The clean walking policy contract: forward + curved turns + 20% stand.
+    # The clean walking policy contract: forward + curved turns. Keep
+    # MicroDuck's standing curriculum: 2% initially, then 5/10/15/20/25% as
+    # the gait matures instead of taxing gait discovery with 20% idle samples.
     # No reverse, lateral motion, turn-in-place or head command in this stage.
     twist = cfg.commands["twist"]
-    twist.rel_standing_envs = 0.20
     twist.rel_turn_in_place_envs = 0.0
     twist.ranges.lin_vel_x = (0.04, 0.18)
     twist.ranges.lin_vel_y = (0.0, 0.0)
     twist.ranges.ang_vel_z = (-0.70, 0.70)
-    cfg.curriculum.pop("standing_envs", None)
 
     # Hold all four head joints at neutral. Head control gets a later task after
     # the BAM gait transfers to hardware.
