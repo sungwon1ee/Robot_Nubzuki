@@ -51,23 +51,32 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     cfg.sim.nconmax = 100
     cfg.sim.naconmax = 200
 
-    # Nubzuki's neutral root height is encoded in its XML at 0.205 m.
+    # reset_base samples offsets around HOME_FRAME. Keep its z offset at zero;
+    # the absolute 0.205 m standing height lives in the entity initial state.
     cfg.events["reset_base"].params["pose_range"]["z"] = (0.0, 0.0)
 
     # The clean walking policy contract: forward + curved turns. Keep
     # MicroDuck's standing curriculum: 2% initially, then 5/10/15/20/25% as
     # the gait matures instead of taxing gait discovery with 20% idle samples.
-    # No reverse, lateral motion, turn-in-place or head command in this stage.
+    # No reverse, lateral motion or turn-in-place in this stage. Head commands
+    # stay deliberately tiny, but non-zero, so those policy inputs do not die
+    # before a later head-control curriculum.
     twist = cfg.commands["twist"]
     twist.rel_turn_in_place_envs = 0.0
     twist.ranges.lin_vel_x = (0.04, 0.18)
     twist.ranges.lin_vel_y = (0.0, 0.0)
     twist.ranges.ang_vel_z = (-0.70, 0.70)
 
-    # Hold all four head joints at neutral. Head control gets a later task after
-    # the BAM gait transfers to hardware.
+    # Commands are deltas from the calibrated park pose, not absolute angles.
+    # Keep 25% exact-neutral samples so the policy also learns to hold HOME.
     head = cfg.commands["head_pose"]
-    head.ranges = ((0.0, 0.0),) * 4
+    head.ranges = (
+        (-0.03, 0.03),  # neck_pitch: +/- 1.7 deg
+        (-0.03, 0.03),  # head_pitch: +/- 1.7 deg
+        (-0.05, 0.05),  # head_yaw: +/- 2.9 deg
+        (-0.01, 0.01),  # head_roll: +/- 0.6 deg
+    )
+    head.zero_command_prob = 0.25
     cfg.curriculum.pop("head_pose_range", None)
     cfg.curriculum.pop("head_pose_bias_weight", None)
     cfg.rewards["head_pose_bias"].weight = 1.0

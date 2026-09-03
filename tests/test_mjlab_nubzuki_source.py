@@ -14,9 +14,20 @@ def test_mjlab_package_pins_real_bam_stack():
     assert "delay_max_lag=6" in robot
 
 
-def test_bam_stage_does_not_enable_head_commands():
+def test_bam_stage_keeps_head_commands_small_but_alive():
     tasks = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/tasks.py").read_text()
-    assert 'head.ranges = ((0.0, 0.0),) * 4' in tasks
+    assert "(-0.03, 0.03)" in tasks
+    assert "(-0.05, 0.05)" in tasks
+    assert "(-0.01, 0.01)" in tasks
+    assert "head.zero_command_prob = 0.25" in tasks
     assert 'twist.ranges.lin_vel_x = (0.04, 0.18)' in tasks
     assert 'twist.ranges.ang_vel_z = (-0.70, 0.70)' in tasks
     assert 'cfg.curriculum.pop("standing_envs"' not in tasks
+
+
+def test_bam_home_uses_root_height_and_calibrated_park_pose():
+    robot = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/robot.py").read_text()
+    assert "pos=(0.0, 0.0, 0.209)" in robot
+    assert "HOME_JOINT_POS = _load_park_pose()" in robot
+    assert 'calibration["joints"][name]["park_deg"]' in robot
+    assert "target.copy_(cmd.pos)" in robot

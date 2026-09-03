@@ -1,5 +1,7 @@
 """Nubzuki articulation configured with the measured STS3215 BAM M6 model."""
 
+import json
+import math
 from pathlib import Path
 
 import mujoco
@@ -14,6 +16,7 @@ from mjlab_microduck.actuator import (
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 NUBZUKI_XML = REPOSITORY_ROOT / "playground/nubzuki/xmls/nubzuki_mjx.xml"
+CALIBRATION_JSON = REPOSITORY_ROOT / "config/nubzuki_calibration.json"
 STS3215_M6_JSON = Path(__file__).resolve().parent / "params/feetech_sts3215_7_4V_m6.json"
 
 
@@ -33,8 +36,25 @@ def get_nubzuki_spec() -> mujoco.MjSpec:
     return spec
 
 
+def _load_park_pose() -> dict[str, float]:
+    """Use the same calibrated neutral pose in training and on hardware."""
+    with CALIBRATION_JSON.open() as stream:
+        calibration = json.load(stream)
+    return {
+        name: math.radians(float(calibration["joints"][name]["park_deg"]))
+        for name in calibration["joint_order"]
+    }
+
+
+HOME_JOINT_POS = _load_park_pose()
+
 HOME_FRAME = EntityCfg.InitialStateCfg(
-    joint_pos={r".*": 0.0},
+    # InitialStateCfg overrides the free-joint position from the XML, so the
+    # standing height must be explicit here rather than relying on base@pos.
+    # The calibrated ankle pose lowers the front edge of the feet by ~4 mm,
+    # hence 0.209 m instead of the all-zero XML pose's 0.205 m.
+    pos=(0.0, 0.0, 0.209),
+    joint_pos=HOME_JOINT_POS,
     joint_vel={r".*": 0.0},
 )
 
@@ -49,12 +69,12 @@ COLLISIONS = CollisionCfg(
 # calculates the STS3215 firmware P loop, voltage saturation, back-EMF, motor
 # torque and load-dependent friction on every MuJoCo Warp step.
 class NubzukiSts3215BamActuator(FrictionDRBamActuator):
-    """Initialize the STS3215 firmware's rate-limited target on GPU.
+    """Initialize and reset the STS3215 firmware target from joint position.
 
     The fitted M6 parameters were published after the pinned MJLab BAM branch;
     that branch's STS3215 class only initialized this state when loading a
-    physical testbench log. Vectorized training has no log, so seed it at the
-    neutral joint pose and reset the selected worlds to neutral each episode.
+    physical testbench log. Vectorized training has no log, so defer seeding
+    until compute(), where the actual post-reset joint position is available.
     """
 
     def initialize(self, mj_model, model, data, device) -> None:
@@ -64,14 +84,28 @@ class NubzukiSts3215BamActuator(FrictionDRBamActuator):
             dtype=torch.float32,
             device=device,
         )
+        self._reset_all_targets = True
+        self._target_reset_env_ids = []
 
     def reset(self, env_ids=None) -> None:
         super().reset(env_ids)
-        target = self._bam_model.actuator.q_target_smooth
         if env_ids is None:
-            target[:] = 0.0
+            self._reset_all_targets = True
+            self._target_reset_env_ids.clear()
         else:
-            target[env_ids] = 0.0
+            self._target_reset_env_ids.append(env_ids)
+
+    def compute(self, cmd):
+        target = self._bam_model.actuator.q_target_smooth
+        if self._reset_all_targets:
+            target.copy_(cmd.pos)
+            self._reset_all_targets = False
+            self._target_reset_env_ids.clear()
+        else:
+            for env_ids in self._target_reset_env_ids:
+                target[env_ids] = cmd.pos[env_ids]
+            self._target_reset_env_ids.clear()
+        return super().compute(cmd)
 
 
 class NubzukiSts3215BamActuatorCfg(FrictionDRBamActuatorCfg):
