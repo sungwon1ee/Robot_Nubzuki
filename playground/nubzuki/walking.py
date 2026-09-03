@@ -145,11 +145,11 @@ def default_config(stage: str = "discovery") -> config_dict.ConfigDict:
                 config.hip_pitch_force_limit_nm = 2.2
                 scales.hip_overload = -2.0
                 scales.knee_underuse = -0.1
-                scales.walking_head_pitch_pose = -2.0
+                scales.walking_head_pitch_pose = -5.0
                 # A direct tilt cost prevents forward lean from becoming the
                 # cheap way to satisfy the velocity command.  Unlike a positive
                 # upright bonus, it cannot be farmed by standing still.
-                scales.orientation = -3.0
+                scales.orientation = -10.0
                 config.walking_neck_pitch_target = -0.20
                 config.walking_head_pitch_target = -0.14
         if stage.startswith("sim2real"):

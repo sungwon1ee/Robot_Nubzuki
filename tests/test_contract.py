@@ -279,11 +279,11 @@ class StandingContractTests(unittest.TestCase):
         self.assertEqual(baseline.reward_config.scales.knee_underuse, 0.0)
         self.assertEqual(relief.reward_config.scales.knee_underuse, -0.1)
         self.assertEqual(baseline.reward_config.scales.orientation, 0.0)
-        self.assertEqual(relief.reward_config.scales.orientation, -3.0)
+        self.assertEqual(relief.reward_config.scales.orientation, -10.0)
         self.assertEqual(
             baseline.reward_config.scales.walking_head_pitch_pose, 0.0
         )
-        self.assertEqual(relief.reward_config.scales.walking_head_pitch_pose, -2.0)
+        self.assertEqual(relief.reward_config.scales.walking_head_pitch_pose, -5.0)
         self.assertEqual(relief.walking_neck_pitch_target, -0.20)
         self.assertEqual(relief.walking_head_pitch_target, -0.14)
         env = Walking(config=relief)
