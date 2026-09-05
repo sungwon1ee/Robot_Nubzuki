@@ -147,6 +147,12 @@ class MjlabObservationBuilder:
     def __init__(self, policy: MjlabPolicy):
         self.policy = policy
         self.last_action = np.zeros(len(policy.joint_order))
+        # The training env delays joint_vel by exactly one control step
+        # (delay_min_lag == delay_max_lag == 1, update period 0 -- fixed, not
+        # randomized), so the policy has never seen a same-step velocity.
+        # Feeding it a fresh one on hardware is a 20 ms mismatch on the
+        # channel that matters most for gait timing.
+        self.previous_joint_vel = np.zeros(len(policy.joint_order))
 
     def build(
         self,
@@ -160,7 +166,9 @@ class MjlabObservationBuilder:
         """All joint arguments are in calibration order; commands are not."""
         policy = self.policy
         joint_pos_rel = np.asarray(qpos, dtype=float)[policy.to_model] - policy.default_joint_pos
-        joint_vel = np.asarray(qvel, dtype=float)[policy.to_model]
+        joint_vel_now = np.asarray(qvel, dtype=float)[policy.to_model]
+        joint_vel = self.previous_joint_vel
+        self.previous_joint_vel = joint_vel_now
         pieces = {
             "base_ang_vel": np.asarray(gyro, dtype=float),
             "projected_gravity": np.asarray(projected_gravity, dtype=float),
