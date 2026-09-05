@@ -153,6 +153,12 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
         )
     is_mjlab = _is_mjlab_policy(policy_path)
     gravity_source = ProjectedGravity(1.0 / calibration.control_frequency_hz)
+    # Per-joint activity, printed every couple of seconds while armed. A limb
+    # that the policy is not driving is invisible in an aggregate log but
+    # obvious as a near-zero swing here.
+    activity_min = np.full(14, np.inf)
+    activity_max = np.full(14, -np.inf)
+    activity_last = time.monotonic()
     if is_mjlab:
         policy = MjlabPolicy(policy_path, calibration)
         builder = MjlabObservationBuilder(policy)
@@ -323,6 +329,25 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 debug_rows += 1
                 if debug_rows % calibration.control_frequency_hz == 0:
                     debug_file.flush()
+            activity_min = np.minimum(activity_min, requested)
+            activity_max = np.maximum(activity_max, requested)
+            if time.monotonic() - activity_last >= 2.0:
+                swing = np.degrees(activity_max - activity_min)
+                groups = {
+                    "L leg": [n for n in calibration.joint_order
+                              if n.startswith("left_")],
+                    "R leg": [n for n in calibration.joint_order
+                              if n.startswith("right_")],
+                    "head": list(HEAD_JOINTS),
+                }
+                summary = "  ".join(
+                    f"{label} {max(swing[calibration.joint_order.index(n)] for n in names):.1f}deg"
+                    for label, names in groups.items()
+                )
+                print(f"\rSwing (2 s peak-to-peak) | {summary}      ", end="", flush=True)
+                activity_min = np.full(14, np.inf)
+                activity_max = np.full(14, -np.inf)
+                activity_last = time.monotonic()
             previous_targets = requested
             time.sleep(max(0.0, dt - (time.monotonic() - started)))
     finally:
