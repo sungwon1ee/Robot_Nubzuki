@@ -21,6 +21,12 @@ NUBZUKI_DETAILED_XML = REPOSITORY_ROOT.parent / "Nubzuki/mjcf/nubzuki_v1.xml"
 CALIBRATION_JSON = REPOSITORY_ROOT / "config/nubzuki_calibration.json"
 STS3215_M6_JSON = Path(__file__).resolve().parent / "params/feetech_sts3215_7_4V_m6.json"
 HEAD_ACTUATOR_NAMES = ("neck_pitch", "head_pitch", "head_yaw", "head_roll")
+# The charger sits under the head: these two joints cannot physically pitch
+# below the park pose any more. Clamping the command is not enough, because
+# the policy's action drives the joint directly and would keep pushing into
+# the obstruction. The model's own limit has to move.
+NO_DOWNWARD_TRAVEL = ("neck_pitch", "head_pitch")
+SOFT_LIMIT_FACTOR = 0.9
 # Gear play per servo, half-range. The STS3215's plastic gearbox has at least
 # as much play as the XL330 MicroDuck models at the same +/-1 deg.
 BACKLASH_HALF_RANGE_RAD = math.radians(1.0)
@@ -57,6 +63,7 @@ def _load_nubzuki_spec(xml_path: Path) -> mujoco.MjSpec:
         actuator.trntype = mujoco.mjtTrn.mjTRN_JOINT
         actuator.target = joint_name
         actuator.set_to_position(13.37)
+    _floor_at_park(spec, HOME_JOINT_POS)
     return spec
 
 
@@ -111,6 +118,32 @@ def get_nubzuki_detailed_spec() -> mujoco.MjSpec:
     head_proxy.contype, head_proxy.conaffinity = 128, 64
     head_proxy.rgba = [0.8, 0.2, 0.2, 0.0]
     return spec
+
+
+def _floor_at_park(spec: mujoco.MjSpec, pose: dict[str, float]) -> None:
+    """Stop the head pitching below its park pose.
+
+    MJLab shrinks every joint range to SOFT_LIMIT_FACTOR about its midpoint and
+    uses that for the limit reward and for clipping a reset. Setting the hard
+    lower limit to the park angle would put the park pose itself outside that
+    soft band -- a pose the robot is reset into and penalised for holding. So
+    solve for the hard limit whose SOFT lower edge lands exactly on park:
+
+        soft_lo = lo + (1 - factor) / 2 * (hi - lo)  ==  park
+    """
+    margin = (1.0 - SOFT_LIMIT_FACTOR) / 2.0
+    for name in NO_DOWNWARD_TRAVEL:
+        joint = spec.joint(name)
+        low, high = float(joint.range[0]), float(joint.range[1])
+        park = float(pose[name])
+        limit = (park - margin * high) / (1.0 - margin)
+        if limit <= low:
+            continue  # Already tighter than the obstruction requires.
+        if limit >= high:
+            raise RuntimeError(
+                f"{name}: park {park:.3f} leaves no travel below {high:.3f}"
+            )
+        joint.range = [limit, high]
 
 
 def _set_dof(joint, field: str, value: float) -> None:

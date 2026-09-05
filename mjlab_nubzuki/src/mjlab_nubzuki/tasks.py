@@ -131,8 +131,12 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     # run. Stage 1 kept these at +/-0.03 only to stop the input neurons dying.
     head = cfg.commands["head_pose"]
     head.ranges = (
-        (-0.09, 0.47),  # neck_pitch: park -11.9 deg, room -6.1 / +29.9 deg
-        (-0.15, 0.33),  # head_pitch: park -8.1 deg, room -10.1 / +21.4 deg
+        # The charger blocks downward travel, so neither pitch is ever
+        # commanded below park (see NO_DOWNWARD_TRAVEL in robot.py, which moves
+        # the joint limit to match -- the command range alone would not stop
+        # the policy's own action from pushing into the obstruction).
+        (0.00, 0.47),   # neck_pitch: park -11.9 deg, up to +26.9 deg
+        (0.00, 0.33),   # head_pitch: park -8.1 deg, up to +18.9 deg
         (-0.50, 0.50),  # head_yaw: park 0 deg, room +/-31.5 deg
         (-0.17, 0.17),  # head_roll: park 0 deg, room +/-10.8 deg
     )
