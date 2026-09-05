@@ -24,7 +24,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # One authentication for the whole run. Without this the script asks for the
 # password four separate times (mkdir, scp, git pull, run); ControlMaster opens
 # a single connection up front and every later ssh/scp rides on it.
-CONTROL_PATH="${TMPDIR:-/tmp}/nubzuki-deploy-%r@%h-%p"
+# %C is a short hash of user/host/port. macOS TMPDIR is long enough that a
+# readable name blows past the 104-character unix socket limit.
+CONTROL_PATH="/tmp/nz-%C"
 SSH_OPTS=(-o ControlMaster=auto -o "ControlPath=$CONTROL_PATH" -o ControlPersist=600)
 
 close_master() {
