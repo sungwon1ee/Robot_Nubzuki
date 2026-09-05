@@ -59,10 +59,11 @@ def _projected_gravity(imu_data: dict) -> np.ndarray:
     norm = float(np.linalg.norm(gravity))
     if norm < 1.0:
         raise RuntimeError(f"Implausible gravity magnitude: {norm:.2f} m/s^2")
-    # MJLab's projected_gravity points along gravity, so upright is ~[0,0,-1].
-    # The BNO055 reports the same direction; the sign check at arm time is what
-    # catches a board mounted the other way up.
-    return gravity / norm
+    # The BNO055 reports gravity with the accelerometer's convention: at rest
+    # the vector points UP, away from gravity (+g on the up axis), which read
+    # [0.07, 0.05, +1.00] standing in the park pose. MJLab's projected_gravity
+    # is the direction gravity acts IN, so upright is [0, 0, -1]. Negate.
+    return -gravity / norm
 
 
 def _make_controller(control: str, host: str, web_port: int):
