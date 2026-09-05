@@ -87,12 +87,6 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     # the absolute 0.205 m standing height lives in the entity initial state.
     cfg.events["reset_base"].params["pose_range"]["z"] = (0.0, 0.0)
 
-    # The clean walking policy contract: forward + curved turns. Keep
-    # MicroDuck's standing curriculum: 2% initially, then 5/10/15/20/25% as
-    # the gait matures instead of taxing gait discovery with 20% idle samples.
-    # No reverse, lateral motion or turn-in-place in this stage. Head commands
-    # stay deliberately tiny, but non-zero, so those policy inputs do not die
-    # before a later head-control curriculum.
     # Stage 2 command envelope. Stage 1 trained forward-only (0.04..0.18) with
     # no reverse and no turn-in-place, which is not a usable joystick
     # contract. This adds reverse and spin-on-the-spot. What it does NOT change
@@ -108,18 +102,14 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     twist.ranges.lin_vel_y = (0.0, 0.0)
     twist.ranges.ang_vel_z = (-0.70, 0.70)
 
-    # At 4096 envs, one PPO iteration contains 24 control steps per env. The
-    # original MicroDuck schedule does not change until iteration 500, beyond
-    # this run's ~306 iterations. Nubzuki's weaker BAM-driven stance needs a
-    # short balance-first phase before most environments receive gait commands.
-    cfg.curriculum["standing_envs"].params["standing_stages"] = [
-        {"step": 0, "rel_standing_envs": 1.00},
-        {"step": 50 * 24, "rel_standing_envs": 0.60},
-        {"step": 100 * 24, "rel_standing_envs": 0.30},
-        {"step": 150 * 24, "rel_standing_envs": 0.15},
-        {"step": 220 * 24, "rel_standing_envs": 0.10},
-    ]
-    twist.rel_standing_envs = 1.0
+    # Standing at zero command has no reward term of its own: upstream teaches
+    # it purely through the fraction of environments whose command is zeroed,
+    # ramping 2% -> 25% as the gait matures. Nubzuki used to override this with
+    # a balance-first schedule (100% standing, down to 10% by iteration 220),
+    # which left 80% of the run with only 10% standing data -- and a policy
+    # that wandered off when told to hold still. Upstream's schedule is kept
+    # as-is now; note it finishes at iteration 2000, so a shorter run stops
+    # partway up the ramp.
 
     # Commands are deltas from the calibrated park pose, not absolute angles.
     # Keep 25% exact-neutral samples so the policy also learns to hold HOME.
