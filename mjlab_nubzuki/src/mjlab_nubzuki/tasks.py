@@ -30,8 +30,15 @@ microduck_actuator.BacklashEncoderBamActuatorCfg = _LegacyBacklashCfg
 from mjlab_microduck.tasks import microduck_velocity_env_cfg as velocity_module
 from mjlab_microduck.tasks.microduck_velocity_env_cfg import MicroduckRlCfg
 
+from mjlab_microduck.tasks.backlash import make_backlash_variant
+
 from .drive_mirror import RunMirror
-from .robot import NUBZUKI_BAM_DETAILED_ROBOT_CFG, NUBZUKI_BAM_ROBOT_CFG
+from .robot import (
+    NUBZUKI_BAM_DETAILED_BACKLASH_ROBOT_CFG,
+    NUBZUKI_BAM_DETAILED_ROBOT_CFG,
+    NUBZUKI_BAM_BACKLASH_ROBOT_CFG,
+    NUBZUKI_BAM_ROBOT_CFG,
+)
 
 
 class NubzukiOnPolicyRunner(VelocityOnPolicyRunner):
@@ -86,9 +93,18 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     # No reverse, lateral motion or turn-in-place in this stage. Head commands
     # stay deliberately tiny, but non-zero, so those policy inputs do not die
     # before a later head-control curriculum.
+    # Stage 2 command envelope. Stage 1 trained forward-only (0.04..0.18) with
+    # no reverse and no turn-in-place, which is not a usable joystick
+    # contract. This adds reverse and spin-on-the-spot. What it does NOT change
+    # is the yaw rate: +/-0.70 was measured to be fast enough on the stage-1
+    # policy, so widening it would only ask for turns the robot has no reason
+    # to make. Reverse is deliberately slower than forward. Lateral stays
+    # disabled: a two-stick phone page has no axis left to command it, so
+    # training it would only spend capacity on a mode the robot is never asked
+    # for.
     twist = cfg.commands["twist"]
-    twist.rel_turn_in_place_envs = 0.0
-    twist.ranges.lin_vel_x = (0.04, 0.18)
+    twist.rel_turn_in_place_envs = 0.10
+    twist.ranges.lin_vel_x = (-0.15, 0.25)
     twist.ranges.lin_vel_y = (0.0, 0.0)
     twist.ranges.ang_vel_z = (-0.70, 0.70)
 
@@ -107,12 +123,18 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
 
     # Commands are deltas from the calibrated park pose, not absolute angles.
     # Keep 25% exact-neutral samples so the policy also learns to hold HOME.
+    # Head commands are deltas from the calibrated park pose, and the park pose
+    # is not centred in the joint range, so the reachable delta is asymmetric.
+    # These are ~90% of the room left between park and the 0.9 soft limit --
+    # the full usable envelope, commanded from iteration 0 rather than grown by
+    # a curriculum whose MicroDuck schedule (500-2000 iters) does not fit this
+    # run. Stage 1 kept these at +/-0.03 only to stop the input neurons dying.
     head = cfg.commands["head_pose"]
     head.ranges = (
-        (-0.03, 0.03),  # neck_pitch: +/- 1.7 deg
-        (-0.03, 0.03),  # head_pitch: +/- 1.7 deg
-        (-0.05, 0.05),  # head_yaw: +/- 2.9 deg
-        (-0.01, 0.01),  # head_roll: +/- 0.6 deg
+        (-0.09, 0.47),  # neck_pitch: park -11.9 deg, room -6.1 / +29.9 deg
+        (-0.15, 0.33),  # head_pitch: park -8.1 deg, room -10.1 / +21.4 deg
+        (-0.50, 0.50),  # head_yaw: park 0 deg, room +/-31.5 deg
+        (-0.17, 0.17),  # head_roll: park 0 deg, room +/-10.8 deg
     )
     head.zero_command_prob = 0.25
     cfg.curriculum.pop("head_pose_range", None)
@@ -170,10 +192,46 @@ NUBZUKI_BAM_RL_CFG.wandb_project = "mjlab_nubzuki"
 NUBZUKI_BAM_RL_CFG.experiment_name = "velocity_bam"
 NUBZUKI_BAM_RL_CFG.run_name = "sts3215_m6_delay3_6"
 
+# Its own experiment directory: backlash checkpoints are not interchangeable
+# with play-free ones, and mixing them under one logs/ tree invites loading the
+# wrong model.
+NUBZUKI_BAM_BACKLASH_RL_CFG = deepcopy(NUBZUKI_BAM_RL_CFG)
+NUBZUKI_BAM_BACKLASH_RL_CFG.experiment_name = "velocity_bam_backlash"
+NUBZUKI_BAM_BACKLASH_RL_CFG.run_name = "sts3215_m6_backlash1deg"
+
+def make_nubzuki_bam_backlash_env_cfg(play: bool = False):
+    """Same task with +/-1 deg of gear play in series with every servo.
+
+    The real STS3215 gearbox has play and its magnetic encoder sits on the
+    output side of it, so the firmware position loop is blind while the servo
+    winds through the dead zone. MicroDuck models exactly this as a separate
+    task family; this is Nubzuki's. Registered alongside the play-free task
+    rather than replacing it, so the two stay comparable.
+
+    Observation and action dimensions are unchanged (still 14 joints): the
+    policy sees qpos[servo] + qpos[backlash], the encoder's view.
+    """
+    cfg = make_nubzuki_bam_env_cfg(play=play)
+    robot_cfg = (
+        NUBZUKI_BAM_DETAILED_BACKLASH_ROBOT_CFG
+        if play
+        else NUBZUKI_BAM_BACKLASH_ROBOT_CFG
+    )
+    return make_backlash_variant(cfg, robot_cfg)
+
+
 register_mjlab_task(
     task_id="Mjlab-Velocity-Flat-BAM-Nubzuki",
     env_cfg=make_nubzuki_bam_env_cfg(),
     play_env_cfg=make_nubzuki_bam_env_cfg(play=True),
     rl_cfg=NUBZUKI_BAM_RL_CFG,
+    runner_cls=NubzukiOnPolicyRunner,
+)
+
+register_mjlab_task(
+    task_id="Mjlab-Velocity-Flat-Backlash-BAM-Nubzuki",
+    env_cfg=make_nubzuki_bam_backlash_env_cfg(),
+    play_env_cfg=make_nubzuki_bam_backlash_env_cfg(play=True),
+    rl_cfg=NUBZUKI_BAM_BACKLASH_RL_CFG,
     runner_cls=NubzukiOnPolicyRunner,
 )

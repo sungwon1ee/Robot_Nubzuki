@@ -61,11 +61,13 @@ def _prune(destination_root: Path) -> None:
 
 
 def _sync(log_dir: Path, destination_root: Path, checkpoint: Path | None) -> None:
+    copied = 0
     try:
         destination_root.mkdir(parents=True, exist_ok=True)
         # The checkpoint just written comes first: it is the thing worth saving.
         if checkpoint is not None and checkpoint.exists():
             _copy(checkpoint, destination_root / checkpoint.name)
+            copied += 1
         for source in log_dir.rglob("*"):
             if not source.is_file() or source.name.endswith(".partial"):
                 continue
@@ -77,10 +79,14 @@ def _sync(log_dir: Path, destination_root: Path, checkpoint: Path | None) -> Non
             destination = destination_root / source.relative_to(log_dir)
             if _is_stale(source, destination):
                 _copy(source, destination)
+                copied += 1
         _prune(destination_root)
+        label = checkpoint.name if checkpoint is not None else "refresh"
+        print(f"[mirror] {label}: {copied} file(s) -> {destination_root}", flush=True)
     except OSError as error:
-        # A backup failure must never take the training run down with it.
-        print(f"[WARN] Drive mirror failed: {error}")
+        # A backup failure must never take the training run down with it, but
+        # it must be impossible to miss in the log.
+        print(f"[MIRROR FAILED] {error}", flush=True)
 
 
 class RunMirror:
@@ -91,8 +97,37 @@ class RunMirror:
         self.destination = mirror_dir()
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
-        if self.destination is not None:
-            print(f"[INFO] Mirroring run to: {self.destination}")
+        if self.destination is None:
+            print(
+                f"[WARN] {ENV_DIR} is not set: checkpoints stay in this container "
+                f"only and are lost when the session ends.",
+                flush=True,
+            )
+        elif self._probe():
+            print(f"[INFO] Mirroring checkpoints to: {self.destination}", flush=True)
+
+    def _probe(self) -> bool:
+        """Fail loudly at startup rather than silently at the first save.
+
+        The usual cause is Drive not being mounted yet, which looks like an
+        ordinary missing directory until the run is over and nothing is there.
+        """
+        assert self.destination is not None
+        try:
+            self.destination.mkdir(parents=True, exist_ok=True)
+            marker = self.destination / ".mirror_probe"
+            marker.write_text("ok")
+            marker.unlink()
+            return True
+        except OSError as error:
+            print(
+                f"[MIRROR DISABLED] cannot write to {self.destination}: {error}\n"
+                f"                  Is Google Drive mounted? Checkpoints will "
+                f"NOT be backed up.",
+                flush=True,
+            )
+            self.destination = None
+            return False
 
     @property
     def enabled(self) -> bool:

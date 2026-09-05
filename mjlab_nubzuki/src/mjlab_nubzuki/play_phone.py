@@ -37,15 +37,17 @@ from playground.nubzuki.phone_controller import PhoneController  # noqa: E402
 # (see make_nubzuki_bam_env_cfg in tasks.py); commanding outside them is
 # extrapolation the walking policy has never seen.
 # --------------------------------------------------------------------------- #
-FORWARD_RANGE = (0.04, 0.18)     # m/s, lin_vel_x
-YAW_RATE_RANGE = (-0.70, 0.70)   # rad/s, ang_vel_z
+FORWARD_RANGE = (-0.15, 0.25)    # m/s, lin_vel_x
+YAW_RATE_RANGE = (-0.70, 0.70)   # rad/s, ang_vel_z (measured sufficient)
+# lin_vel_y is trained at zero: no strafing in this stage.
 # head_pose command is a 4D delta from the park pose:
 #   (neck_pitch, head_pitch, head_yaw, head_roll)
+# The park pose is not centred in the joint range, so these are asymmetric.
 HEAD_RANGES = (
-    (-0.03, 0.03),
-    (-0.03, 0.03),
-    (-0.05, 0.05),
-    (-0.01, 0.01),
+    (-0.09, 0.47),
+    (-0.15, 0.33),
+    (-0.50, 0.50),
+    (-0.17, 0.17),
 )
 DEADZONE = 0.1
 
@@ -92,7 +94,7 @@ class PhoneCommandSource:
             return twist, head
 
         # Walk mode: left stick = locomotion, right stick = small head yaw/pitch.
-        forward = max(stick["left_y"], 0.0) * FORWARD_RANGE[1]
+        forward = scale_axis(stick["left_y"], FORWARD_RANGE)
         yaw_rate = scale_axis(stick["left_x"], YAW_RATE_RANGE)
         head = [
             0.0,

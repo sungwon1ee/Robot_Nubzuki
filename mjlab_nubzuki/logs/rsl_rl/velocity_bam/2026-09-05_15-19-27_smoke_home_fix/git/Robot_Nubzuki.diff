@@ -1,0 +1,184 @@
+--- git commit ---
+1577066af319a68f0d1957be0755c8239323c246
+
+
+--- git status ---
+On branch walking
+Your branch is up to date with 'origin/walking'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   mjlab_nubzuki/README.md
+	modified:   mjlab_nubzuki/src/mjlab_nubzuki/robot.py
+	modified:   mjlab_nubzuki/src/mjlab_nubzuki/tasks.py
+	modified:   tests/test_mjlab_nubzuki_source.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	mjlab_nubzuki/MUJOCO_LOG.TXT
+	mjlab_nubzuki/logs/
+	test_3_walk.csv
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/mjlab_nubzuki/README.md b/mjlab_nubzuki/README.md
+index 429cded..d6b14a5 100644
+--- a/mjlab_nubzuki/README.md
++++ b/mjlab_nubzuki/README.md
+@@ -6,7 +6,8 @@ Python 3.11 JAX/MJX trainer and real-robot runtime untouched.
+ The first task uses MicroDuck's velocity-task design with the Nubzuki model and
+ the official `feetech_sts3215_7_4V` BAM M6 actuator. Motor commands are delayed
+ 3--6 simulation steps inside BAM. Episodes start at the calibrated hardware
+-park pose and a 0.209 m root height. Small head-pose commands remain active from
++park pose (with a 2.25-degree soft-limit-safe knee bend) and a 0.212 m root
++height. Small head-pose commands remain active from
+ the beginning so head-command inputs can be expanded in a later curriculum.
+ 
+ ## Colab setup
+diff --git a/mjlab_nubzuki/src/mjlab_nubzuki/robot.py b/mjlab_nubzuki/src/mjlab_nubzuki/robot.py
+index d1ee4a9..65add9c 100644
+--- a/mjlab_nubzuki/src/mjlab_nubzuki/robot.py
++++ b/mjlab_nubzuki/src/mjlab_nubzuki/robot.py
+@@ -7,7 +7,6 @@ from pathlib import Path
+ import mujoco
+ import torch
+ from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
+-from mjlab.utils.spec_config import CollisionCfg
+ from mjlab_microduck.actuator import (
+     FrictionDRBamActuator,
+     FrictionDRBamActuatorCfg,
+@@ -40,10 +39,16 @@ def _load_park_pose() -> dict[str, float]:
+     """Use the same calibrated neutral pose in training and on hardware."""
+     with CALIBRATION_JSON.open() as stream:
+         calibration = json.load(stream)
+-    return {
++    pose = {
+         name: math.radians(float(calibration["joints"][name]["park_deg"]))
+         for name in calibration["joint_order"]
+     }
++    # A knee exactly at its 0-degree hard stop is clipped to -2.25 degrees by
++    # MJLab's 0.9 soft-limit reset. Make that small bend explicit so default,
++    # reset and action offsets all agree instead of starting with hidden error.
++    pose["left_knee"] = math.radians(-2.25)
++    pose["right_knee"] = math.radians(-2.25)
++    return pose
+ 
+ 
+ HOME_JOINT_POS = _load_park_pose()
+@@ -51,20 +56,13 @@ HOME_JOINT_POS = _load_park_pose()
+ HOME_FRAME = EntityCfg.InitialStateCfg(
+     # InitialStateCfg overrides the free-joint position from the XML, so the
+     # standing height must be explicit here rather than relying on base@pos.
+-    # The calibrated ankle pose lowers the front edge of the feet by ~4 mm,
+-    # hence 0.209 m instead of the all-zero XML pose's 0.205 m.
+-    pos=(0.0, 0.0, 0.209),
++    # The calibrated ankles plus the small knee bend lower the foot edges, so
++    # 0.212 m starts just above the floor without a reset contact impulse.
++    pos=(0.0, 0.0, 0.212),
+     joint_pos=HOME_JOINT_POS,
+     joint_vel={r".*": 0.0},
+ )
+ 
+-COLLISIONS = CollisionCfg(
+-    geom_names_expr=(r".*_collision",),
+-    condim={r"^(left|right)_foot_collision$": 3, r".*_collision": 1},
+-    priority={r"^(left|right)_foot_collision$": 1},
+-    friction={r"^(left|right)_foot_collision$": (1.0,)},
+-)
+-
+ # This is the real actuator path, not an ideal PD plus a delay buffer. BAM M6
+ # calculates the STS3215 firmware P loop, voltage saturation, back-EMF, motor
+ # torque and load-dependent friction on every MuJoCo Warp step.
+@@ -135,7 +133,10 @@ ACTUATORS = NubzukiSts3215BamActuatorCfg(
+ NUBZUKI_BAM_ROBOT_CFG = EntityCfg(
+     spec_fn=get_nubzuki_spec,
+     init_state=HOME_FRAME,
+-    collisions=(COLLISIONS,),
++    # Preserve the carefully separated collision masks from nubzuki_mjx.xml.
++    # MicroDuck's FULL_COLLISION editor sets every matched geom to contype=1,
++    # which re-enables Nubzuki's intentionally disabled overlapping hip-link
++    # proxies and makes the robot explosively self-collide at reset.
+     articulation=EntityArticulationInfoCfg(
+         actuators=(ACTUATORS,),
+         soft_joint_pos_limit_factor=0.9,
+diff --git a/mjlab_nubzuki/src/mjlab_nubzuki/tasks.py b/mjlab_nubzuki/src/mjlab_nubzuki/tasks.py
+index dad47eb..2a63040 100644
+--- a/mjlab_nubzuki/src/mjlab_nubzuki/tasks.py
++++ b/mjlab_nubzuki/src/mjlab_nubzuki/tasks.py
+@@ -67,6 +67,19 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
+     twist.ranges.lin_vel_y = (0.0, 0.0)
+     twist.ranges.ang_vel_z = (-0.70, 0.70)
+ 
++    # At 4096 envs, one PPO iteration contains 24 control steps per env. The
++    # original MicroDuck schedule does not change until iteration 500, beyond
++    # this run's ~306 iterations. Nubzuki's weaker BAM-driven stance needs a
++    # short balance-first phase before most environments receive gait commands.
++    cfg.curriculum["standing_envs"].params["standing_stages"] = [
++        {"step": 0, "rel_standing_envs": 1.00},
++        {"step": 50 * 24, "rel_standing_envs": 0.60},
++        {"step": 100 * 24, "rel_standing_envs": 0.30},
++        {"step": 150 * 24, "rel_standing_envs": 0.15},
++        {"step": 220 * 24, "rel_standing_envs": 0.10},
++    ]
++    twist.rel_standing_envs = 1.0
++
+     # Commands are deltas from the calibrated park pose, not absolute angles.
+     # Keep 25% exact-neutral samples so the policy also learns to hold HOME.
+     head = cfg.commands["head_pose"]
+@@ -99,6 +112,21 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
+ 
+     if play:
+         cfg.scene.num_envs = min(cfg.scene.num_envs, 16)
++        # Playback should show the policy/home pose under deterministic nominal
++        # conditions. Upstream's play config still contains training pushes and
++        # domain randomization, which makes a zero-agent HOME check misleading.
++        for event_name in (
++            "push_robot",
++            "randomize_com",
++            "randomize_joint_friction",
++            "randomize_armature",
++            "foot_friction",
++            "encoder_bias",
++            "base_com",
++            "randomize_mass_inertia",
++        ):
++            cfg.events.pop(event_name, None)
++        cfg.curriculum = {}
+     return cfg
+ 
+ 
+diff --git a/tests/test_mjlab_nubzuki_source.py b/tests/test_mjlab_nubzuki_source.py
+index e7f03f1..5dc2f91 100644
+--- a/tests/test_mjlab_nubzuki_source.py
++++ b/tests/test_mjlab_nubzuki_source.py
+@@ -27,7 +27,26 @@ def test_bam_stage_keeps_head_commands_small_but_alive():
+ 
+ def test_bam_home_uses_root_height_and_calibrated_park_pose():
+     robot = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/robot.py").read_text()
+-    assert "pos=(0.0, 0.0, 0.209)" in robot
++    assert "pos=(0.0, 0.0, 0.212)" in robot
+     assert "HOME_JOINT_POS = _load_park_pose()" in robot
+     assert 'calibration["joints"][name]["park_deg"]' in robot
++    assert 'pose["left_knee"] = math.radians(-2.25)' in robot
++    assert 'pose["right_knee"] = math.radians(-2.25)' in robot
+     assert "target.copy_(cmd.pos)" in robot
++
++
++def test_bam_preserves_nubzuki_collision_masks_and_clean_playback():
++    robot = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/robot.py").read_text()
++    tasks = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/tasks.py").read_text()
++    assert "CollisionCfg" not in robot
++    assert "collisions=(COLLISIONS,)" not in robot
++    assert '"push_robot"' in tasks
++    assert "cfg.events.pop(event_name, None)" in tasks
++
++
++def test_bam_training_starts_with_balance_curriculum():
++    tasks = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/tasks.py").read_text()
++    assert '{"step": 0, "rel_standing_envs": 1.00}' in tasks
++    assert '{"step": 50 * 24, "rel_standing_envs": 0.60}' in tasks
++    assert '{"step": 220 * 24, "rel_standing_envs": 0.10}' in tasks
++    assert "twist.rel_standing_envs = 1.0" in tasks

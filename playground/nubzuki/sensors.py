@@ -37,9 +37,15 @@ class ImuSensor:
         while True:
             started = time.monotonic()
             try:
+                # BNO055 in NDOF mode fuses out a gravity vector, which is
+                # what an MJLab policy's projected_gravity term wants: the
+                # accelerometer alone carries the robot's own motion and is
+                # only gravity while standing still. Axis remap above already
+                # applies, so this is in the same frame as gyro.
                 data = {
                     "gyro": np.asarray(self.sensor.gyro, dtype=float),
                     "accelerometer": np.asarray(self.sensor.acceleration, dtype=float),
+                    "gravity": np.asarray(self.sensor.gravity, dtype=float),
                 }
                 if all(value.shape == (3,) and np.isfinite(value).all() for value in data.values()):
                     try:

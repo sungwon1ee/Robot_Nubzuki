@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import time
 from pathlib import Path
 
@@ -18,6 +19,12 @@ from playground.nubzuki.controller import (
 )
 from playground.nubzuki.hardware import ServoHardware
 from playground.nubzuki.head_dynamics import HeadDynamicsProfile, HeadTrajectoryLimiter
+from playground.nubzuki.mjlab_policy import (
+    MjlabObservationBuilder,
+    MjlabPolicy,
+    head_pose_command,
+    twist_command,
+)
 from playground.nubzuki.policy import ObservationBuilder, StandingPolicy
 from playground.nubzuki.sensors import FootContacts, ImuSensor
 
@@ -26,6 +33,36 @@ from playground.nubzuki.sensors import FootContacts, ImuSensor
 # Slow enough to watch and catch, fast enough to finish in well under a second.
 PARK_SPEED_FRACTION = 0.2
 PARK_TOLERANCE_RAD = 1e-4
+
+
+def _is_mjlab_policy(policy_path: str) -> bool:
+    """Pick the policy family from the metadata rather than from a flag.
+
+    The two families need different observations, a different joint order and
+    a different action mapping; asking the operator to remember which one a
+    file is invites exactly the mistake that ends with the robot on its face.
+    """
+    metadata = Path(policy_path).expanduser().with_suffix(".json")
+    if not metadata.exists():
+        raise FileNotFoundError(f"Policy metadata missing: {metadata}")
+    try:
+        return json.loads(metadata.read_text(encoding="utf-8")).get("framework") == "mjlab"
+    except ValueError as error:
+        raise RuntimeError(f"Cannot read {metadata}: {error}") from error
+
+
+def _projected_gravity(imu_data: dict) -> np.ndarray:
+    """Unit gravity direction in the body frame, as MJLab defines it."""
+    gravity = np.asarray(imu_data.get("gravity"), dtype=float)
+    if gravity.shape != (3,) or not np.isfinite(gravity).all():
+        raise RuntimeError("IMU returned no usable gravity vector")
+    norm = float(np.linalg.norm(gravity))
+    if norm < 1.0:
+        raise RuntimeError(f"Implausible gravity magnitude: {norm:.2f} m/s^2")
+    # MJLab's projected_gravity points along gravity, so upright is ~[0,0,-1].
+    # The BNO055 reports the same direction; the sign check at arm time is what
+    # catches a board mounted the other way up.
+    return gravity / norm
 
 
 def _make_controller(control: str, host: str, web_port: int):
@@ -78,12 +115,21 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             "This head dynamics profile is the unmeasured simulation fallback. "
             "Run `nubzuki-standing identify-head` on the robot first."
         )
-    policy = StandingPolicy(policy_path, calibration, profile)
+    is_mjlab = _is_mjlab_policy(policy_path)
+    if is_mjlab:
+        policy = MjlabPolicy(policy_path, calibration)
+        builder = MjlabObservationBuilder(policy)
+        print(
+            f"MJLab policy: {policy.observation_size}D observation, "
+            f"action scale {policy.action_scale}"
+        )
+    else:
+        policy = StandingPolicy(policy_path, calibration, profile)
+        builder = ObservationBuilder()
     hardware = ServoHardware(calibration, port)
     controller = _make_controller(control, host, web_port)
     imu = ImuSensor(upside_down=imu_upside_down)
     feet = FootContacts()
-    builder = ObservationBuilder()
     limiter = HeadTrajectoryLimiter(profile)
     armed = False
     servos_energized = False
@@ -145,6 +191,19 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 break
             if not armed:
                 if a_pressed and not a_was_pressed:
+                    if is_mjlab:
+                        # Standing in park, gravity must read straight down in
+                        # the body frame. A remapped or upside-down IMU shows
+                        # up here as a tilt the policy would spend the whole
+                        # run fighting, so refuse to arm on it.
+                        gravity = _projected_gravity(imu.read())
+                        if gravity[2] > -0.9:
+                            raise RuntimeError(
+                                f"Projected gravity is {np.round(gravity, 3).tolist()}, "
+                                f"expected about [0, 0, -1] while standing. Check "
+                                f"--imu-upside-down and the IMU axis remap before arming."
+                            )
+                        print(f"IMU check OK: projected gravity {np.round(gravity, 3).tolist()}")
                     hardware.set_kps([low] * 14)
                     hardware.set_positions({name: 0.0 for name in calibration.joint_order})
                     time.sleep(1.0)
@@ -173,29 +232,40 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             head_axes = head_axes_for_mode(axes, mode)
             raw_targets = axes_to_head_targets(head_axes, calibration, profile)
             head_targets = limiter.step(raw_targets)
-            forward = (
-                forward_velocity_command(axes, mode, policy.metadata)
-                if input_fresh else 0.0
-            )
-            yaw_rate = (
-                yaw_rate_command(axes, mode, policy.metadata)
-                if input_fresh else 0.0
-            )
-            command = np.asarray(
-                [forward, 0.0, yaw_rate]
-                + [head_targets[name] for name in HEAD_JOINTS]
-            )
+            if not input_fresh:
+                forward, yaw_rate = 0.0, 0.0
+            elif is_mjlab:
+                forward, yaw_rate = twist_command(axes, mode, policy)
+            else:
+                forward = forward_velocity_command(axes, mode, policy.metadata)
+                yaw_rate = yaw_rate_command(axes, mode, policy.metadata)
             imu_data = imu.read()
             qpos = hardware.read_positions()
             qvel = hardware.read_velocities()
             contacts = feet.read()
-            observation = builder.build(
-                imu_data["gyro"], imu_data["accelerometer"], command,
-                qpos, qvel, contacts,
-            )
-            action = policy.infer(observation)
-            builder.advance(action)
-            policy_target = action * calibration.action_scale_rad
+            if is_mjlab:
+                observation = builder.build(
+                    imu_data["gyro"], _projected_gravity(imu_data), qpos, qvel,
+                    np.asarray([forward, 0.0, yaw_rate]),
+                    head_pose_command(head_targets, policy),
+                )
+                action = policy.infer(observation)
+                builder.advance(action)
+                # MJLab actions are deltas around the training default pose,
+                # not absolute targets.
+                policy_target = policy.joint_targets(action)
+            else:
+                command = np.asarray(
+                    [forward, 0.0, yaw_rate]
+                    + [head_targets[name] for name in HEAD_JOINTS]
+                )
+                observation = builder.build(
+                    imu_data["gyro"], imu_data["accelerometer"], command,
+                    qpos, qvel, contacts,
+                )
+                action = policy.infer(observation)
+                builder.advance(action)
+                policy_target = action * calibration.action_scale_rad
             lowers = np.asarray([calibration.limits_rad(name)[0] for name in calibration.joint_order])
             uppers = np.asarray([calibration.limits_rad(name)[1] for name in calibration.joint_order])
             policy_target = np.clip(policy_target, lowers, uppers)

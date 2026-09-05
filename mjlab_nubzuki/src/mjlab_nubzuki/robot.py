@@ -8,6 +8,8 @@ import mujoco
 import torch
 from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
 from mjlab_microduck.actuator import (
+    BacklashEncoderBamActuator,
+    BacklashEncoderBamActuatorCfg,
     FrictionDRBamActuator,
     FrictionDRBamActuatorCfg,
 )
@@ -18,6 +20,10 @@ NUBZUKI_XML = REPOSITORY_ROOT / "playground/nubzuki/xmls/nubzuki_mjx.xml"
 NUBZUKI_DETAILED_XML = REPOSITORY_ROOT.parent / "Nubzuki/mjcf/nubzuki_v1.xml"
 CALIBRATION_JSON = REPOSITORY_ROOT / "config/nubzuki_calibration.json"
 STS3215_M6_JSON = Path(__file__).resolve().parent / "params/feetech_sts3215_7_4V_m6.json"
+HEAD_ACTUATOR_NAMES = ("neck_pitch", "head_pitch", "head_yaw", "head_roll")
+# Gear play per servo, half-range. The STS3215's plastic gearbox has at least
+# as much play as the XL330 MicroDuck models at the same +/-1 deg.
+BACKLASH_HALF_RANGE_RAD = math.radians(1.0)
 JOINT_ACTUATOR_ORDER = (
     "left_hip_yaw", "left_hip_roll", "left_hip_pitch", "left_knee", "left_ankle",
     "right_hip_yaw", "right_hip_roll", "right_hip_pitch", "right_knee", "right_ankle",
@@ -107,6 +113,58 @@ def get_nubzuki_detailed_spec() -> mujoco.MjSpec:
     return spec
 
 
+def _add_backlash(spec: mujoco.MjSpec) -> mujoco.MjSpec:
+    """Put an unactuated +/-1 deg hinge in series with every servo joint.
+
+    The servo joint is the motor output; this hinge is the gear play between
+    it and the link, so the link angle is the sum of the two. Paired with
+    NubzukiSts3215BacklashBamActuator, whose firmware position loop reads
+    through the play the way the real magnetic encoder does.
+
+    Constraint parameters follow MicroDuck's add_backlash.py: at this range
+    the default solref lets the joint blow through its limits under load, so
+    solreflimit is tightened to 2*sim_dt and the impedance raised until the
+    gear-teeth contact is effectively rigid.
+    """
+    servo_joints = set(JOINT_ACTUATOR_ORDER)
+    added = 0
+    for body in spec.bodies:
+        for joint in list(body.joints):
+            if joint.name not in servo_joints:
+                continue
+            play = body.add_joint()
+            play.name = f"passive_{joint.name}_backlash"
+            play.type = mujoco.mjtJoint.mjJNT_HINGE
+            play.axis = list(joint.axis)
+            play.limited = mujoco.mjtLimited.mjLIMITED_TRUE
+            play.range = [-BACKLASH_HALF_RANGE_RAD, BACKLASH_HALF_RANGE_RAD]
+            # Set every field explicitly: the sts3215 default class carries
+            # servo damping/friction/armature that must not leak into the play.
+            play.damping = 0.01
+            play.frictionloss = 0.0
+            play.armature = 0.001
+            play.stiffness = 0.0
+            play.solref_limit = [0.01, 1.0]
+            play.solimp_limit = [0.95, 0.999, 0.0001, 0.5, 2.0]
+            added += 1
+    if added != len(JOINT_ACTUATOR_ORDER):
+        raise RuntimeError(
+            f"Backlash injection matched {added} joints, expected "
+            f"{len(JOINT_ACTUATOR_ORDER)}"
+        )
+    return spec
+
+
+def get_nubzuki_backlash_spec() -> mujoco.MjSpec:
+    """Training model with gear play."""
+    return _add_backlash(get_nubzuki_spec())
+
+
+def get_nubzuki_detailed_backlash_spec() -> mujoco.MjSpec:
+    """Playback model with gear play."""
+    return _add_backlash(get_nubzuki_detailed_spec())
+
+
 def _load_park_pose() -> dict[str, float]:
     """Use the same calibrated neutral pose in training and on hardware."""
     with CALIBRATION_JSON.open() as stream:
@@ -151,7 +209,7 @@ DETAILED_HOME_FRAME = EntityCfg.InitialStateCfg(
 # This is the real actuator path, not an ideal PD plus a delay buffer. BAM M6
 # calculates the STS3215 firmware P loop, voltage saturation, back-EMF, motor
 # torque and load-dependent friction on every MuJoCo Warp step.
-class NubzukiSts3215BamActuator(FrictionDRBamActuator):
+class _Sts3215TargetSeed:
     """Initialize and reset the STS3215 firmware target from joint position.
 
     The fitted M6 parameters were published after the pinned MJLab BAM branch;
@@ -191,21 +249,39 @@ class NubzukiSts3215BamActuator(FrictionDRBamActuator):
         return super().compute(cmd)
 
 
+class NubzukiSts3215BamActuator(_Sts3215TargetSeed, FrictionDRBamActuator):
+    """Encoder on the motor side: the model without gear play."""
+
+
+class NubzukiSts3215BacklashBamActuator(_Sts3215TargetSeed, BacklashEncoderBamActuator):
+    """Encoder on the output side, reading through the passive backlash hinge."""
+
+
 class NubzukiSts3215BamActuatorCfg(FrictionDRBamActuatorCfg):
     def build(self, entity, target_ids, target_names):
         return NubzukiSts3215BamActuator(self, entity, target_ids, target_names)
 
 
-ACTUATORS = NubzukiSts3215BamActuatorCfg(
+class NubzukiSts3215BacklashBamActuatorCfg(BacklashEncoderBamActuatorCfg):
+    def build(self, entity, target_ids, target_names):
+        return NubzukiSts3215BacklashBamActuator(
+            self, entity, target_ids, target_names
+        )
+
+
+# kp_fw is the Feetech P-coefficient REGISTER value, not a MuJoCo position
+# gain: BAM computes duty = (q_target - q) * kp_fw * error_gain. It must match
+# what the runtime flashes to the servos, which is config/nubzuki_calibration
+# .json -> runtime.leg_kp = 30 and runtime.head_kp = 24. Training every joint
+# at 30 made the four head servos 25% stiffer in simulation than on hardware.
+_LEG_KP_FW = 30.0
+_HEAD_KP_FW = 24.0
+
+_SHARED_ACTUATOR_KWARGS = dict(
     # This JSON is copied verbatim from BAM's official STS3215 7.4 V M6
     # parameter set. Pinning it here prevents a moving BAM branch from silently
     # changing the actuator fitted to this robot.
     json_path=str(STS3215_M6_JSON),
-    target_names_expr=(
-        r"^(left|right)_(hip_yaw|hip_roll|hip_pitch|knee|ankle)$|"
-        r"^(neck_pitch|head_pitch|head_yaw|head_roll)$",
-    ),
-    kp_fw=30.0,
     vin_range=(7.0, 8.2),
     vin_drop_resistance_range=(0.0, 0.20),
     vin_min=6.5,
@@ -215,6 +291,49 @@ ACTUATORS = NubzukiSts3215BamActuatorCfg(
     delay_per_env_phase=True,
 )
 
+_LEG_JOINTS_EXPR = (r"^(left|right)_(hip_yaw|hip_roll|hip_pitch|knee|ankle)$",)
+_HEAD_JOINTS_EXPR = (r"^(neck_pitch|head_pitch|head_yaw|head_roll)$",)
+
+
+def _actuator_cfgs(backlash: bool):
+    cls = (
+        NubzukiSts3215BacklashBamActuatorCfg
+        if backlash
+        else NubzukiSts3215BamActuatorCfg
+    )
+    return (
+        cls(
+            target_names_expr=_LEG_JOINTS_EXPR,
+            kp_fw=_LEG_KP_FW,
+            **_SHARED_ACTUATOR_KWARGS,
+        ),
+        cls(
+            target_names_expr=_HEAD_JOINTS_EXPR,
+            kp_fw=_HEAD_KP_FW,
+            **_SHARED_ACTUATOR_KWARGS,
+        ),
+    )
+
+
+ACTUATORS = _actuator_cfgs(backlash=False)
+BACKLASH_ACTUATORS = _actuator_cfgs(backlash=True)
+
+# HOME for the backlash models. The pose dict is keyed by exact servo joint
+# names, so the passive hinges would fall through to zero anyway; pin them
+# explicitly so the intent survives any later switch to regex keys.
+BACKLASH_HOME_FRAME = EntityCfg.InitialStateCfg(
+    pos=HOME_FRAME.pos,
+    joint_pos={r".*_backlash$": 0.0, **HOME_JOINT_POS},
+    joint_vel={r".*": 0.0},
+)
+
+DETAILED_BACKLASH_HOME_FRAME = EntityCfg.InitialStateCfg(
+    pos=DETAILED_HOME_FRAME.pos,
+    joint_pos={r".*_backlash$": 0.0, **HOME_JOINT_POS},
+    joint_vel={r".*": 0.0},
+)
+
+
 NUBZUKI_BAM_ROBOT_CFG = EntityCfg(
     spec_fn=get_nubzuki_spec,
     init_state=HOME_FRAME,
@@ -223,7 +342,7 @@ NUBZUKI_BAM_ROBOT_CFG = EntityCfg(
     # which re-enables Nubzuki's intentionally disabled overlapping hip-link
     # proxies and makes the robot explosively self-collide at reset.
     articulation=EntityArticulationInfoCfg(
-        actuators=(ACTUATORS,),
+        actuators=ACTUATORS,
         soft_joint_pos_limit_factor=0.9,
     ),
 )
@@ -232,7 +351,26 @@ NUBZUKI_BAM_DETAILED_ROBOT_CFG = EntityCfg(
     spec_fn=get_nubzuki_detailed_spec,
     init_state=DETAILED_HOME_FRAME,
     articulation=EntityArticulationInfoCfg(
-        actuators=(ACTUATORS,),
+        actuators=ACTUATORS,
+        soft_joint_pos_limit_factor=0.9,
+    ),
+)
+
+
+NUBZUKI_BAM_BACKLASH_ROBOT_CFG = EntityCfg(
+    spec_fn=get_nubzuki_backlash_spec,
+    init_state=BACKLASH_HOME_FRAME,
+    articulation=EntityArticulationInfoCfg(
+        actuators=BACKLASH_ACTUATORS,
+        soft_joint_pos_limit_factor=0.9,
+    ),
+)
+
+NUBZUKI_BAM_DETAILED_BACKLASH_ROBOT_CFG = EntityCfg(
+    spec_fn=get_nubzuki_detailed_backlash_spec,
+    init_state=DETAILED_BACKLASH_HOME_FRAME,
+    articulation=EntityArticulationInfoCfg(
+        actuators=BACKLASH_ACTUATORS,
         soft_joint_pos_limit_factor=0.9,
     ),
 )
