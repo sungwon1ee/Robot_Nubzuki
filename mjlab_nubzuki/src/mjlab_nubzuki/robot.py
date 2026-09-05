@@ -113,6 +113,19 @@ def get_nubzuki_detailed_spec() -> mujoco.MjSpec:
     return spec
 
 
+def _set_dof(joint, field: str, value: float) -> None:
+    """Assign a per-DOF joint property across MuJoCo versions.
+
+    MuJoCo made damping, armature, frictionloss and stiffness three-element
+    arrays (one per DOF, for ball joints) where they used to be scalars. A
+    hinge uses only the first, but the binding rejects a bare float.
+    """
+    try:
+        setattr(joint, field, value)
+    except TypeError:
+        setattr(joint, field, [value, 0.0, 0.0])
+
+
 def _add_backlash(spec: mujoco.MjSpec) -> mujoco.MjSpec:
     """Put an unactuated +/-1 deg hinge in series with every servo joint.
 
@@ -140,10 +153,10 @@ def _add_backlash(spec: mujoco.MjSpec) -> mujoco.MjSpec:
             play.range = [-BACKLASH_HALF_RANGE_RAD, BACKLASH_HALF_RANGE_RAD]
             # Set every field explicitly: the sts3215 default class carries
             # servo damping/friction/armature that must not leak into the play.
-            play.damping = 0.01
-            play.frictionloss = 0.0
-            play.armature = 0.001
-            play.stiffness = 0.0
+            _set_dof(play, "damping", 0.01)
+            _set_dof(play, "frictionloss", 0.0)
+            _set_dof(play, "armature", 0.001)
+            _set_dof(play, "stiffness", 0.0)
             play.solref_limit = [0.01, 1.0]
             play.solimp_limit = [0.95, 0.999, 0.0001, 0.5, 2.0]
             added += 1
