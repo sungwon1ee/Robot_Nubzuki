@@ -189,15 +189,17 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
         path.parent.mkdir(parents=True, exist_ok=True)
         debug_file = path.open("w", newline="", encoding="utf-8")
         debug_writer = csv.writer(debug_file)
-        debug_writer.writerow([
-            "time_s", "forward_cmd_m_s", "yaw_cmd_rad_s",
-            "gyro_x", "gyro_y", "gyro_z",
-            "accel_x", "accel_y", "accel_z",
-            "left_contact", "right_contact",
-            "left_hip_roll_actual_rad", "right_hip_roll_actual_rad",
-            "left_hip_roll_policy_target_rad", "right_hip_roll_policy_target_rad",
-            "left_hip_roll_sent_target_rad", "right_hip_roll_sent_target_rad",
-        ])
+        # Every joint, commanded against measured. A limb that is commanded
+        # but does not arrive is a different problem from one the policy never
+        # drives, and only the per-joint pair separates them.
+        debug_writer.writerow(
+            ["time_s", "forward_cmd_m_s", "yaw_cmd_rad_s",
+             "gyro_x", "gyro_y", "gyro_z",
+             "grav_x", "grav_y", "grav_z",
+             "left_contact", "right_contact"]
+            + [f"{name}_target_rad" for name in calibration.joint_order]
+            + [f"{name}_actual_rad" for name in calibration.joint_order]
+        )
         debug_file.flush()
         print(f"Debug CSV: {path.resolve()}")
     try:
@@ -318,36 +320,18 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             )
             hardware.set_positions(dict(zip(calibration.joint_order, requested)))
             if debug_writer is not None:
-                left_roll, right_roll = 1, 10
-                debug_writer.writerow([
-                    time.monotonic() - debug_started, forward, yaw_rate,
-                    *imu_data["gyro"], *imu_data["accelerometer"], *contacts,
-                    qpos[left_roll], qpos[right_roll],
-                    policy_target[left_roll], policy_target[right_roll],
-                    requested[left_roll], requested[right_roll],
-                ])
+                gravity_row = (
+                    gravity_source.last if gravity_source.last is not None
+                    else np.zeros(3)
+                )
+                debug_writer.writerow(
+                    [time.monotonic() - debug_started, forward, yaw_rate,
+                     *imu_data["gyro"], *gravity_row, *contacts]
+                    + list(requested) + list(qpos)
+                )
                 debug_rows += 1
                 if debug_rows % calibration.control_frequency_hz == 0:
                     debug_file.flush()
-            activity_min = np.minimum(activity_min, requested)
-            activity_max = np.maximum(activity_max, requested)
-            if time.monotonic() - activity_last >= 2.0:
-                swing = np.degrees(activity_max - activity_min)
-                groups = {
-                    "L leg": [n for n in calibration.joint_order
-                              if n.startswith("left_")],
-                    "R leg": [n for n in calibration.joint_order
-                              if n.startswith("right_")],
-                    "head": list(HEAD_JOINTS),
-                }
-                summary = "  ".join(
-                    f"{label} {max(swing[calibration.joint_order.index(n)] for n in names):.1f}deg"
-                    for label, names in groups.items()
-                )
-                print(f"\rSwing (2 s peak-to-peak) | {summary}      ", end="", flush=True)
-                activity_min = np.full(14, np.inf)
-                activity_max = np.full(14, -np.inf)
-                activity_last = time.monotonic()
             previous_targets = requested
             time.sleep(max(0.0, dt - (time.monotonic() - started)))
     finally:
