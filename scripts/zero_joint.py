@@ -31,7 +31,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration  # noqa: E402
-from playground.nubzuki.hardware import ServoHardware  # noqa: E402
+from playground.nubzuki.hardware import ServoHardware, _bus  # noqa: E402
 from playground.nubzuki.robot_runtime import park  # noqa: E402
 
 MIRROR = {"left": "right", "right": "left"}
@@ -104,7 +104,7 @@ def main() -> None:
         park(hardware, calibration, hardware.read_positions(), dt)
         return
 
-    raw = hardware.io.read_present_position([servo_id])[0]
+    raw = _bus(hardware.io.read_present_position, [servo_id])[0]
     target = math.radians(args.at_deg)
     new_offset = math.degrees(float(raw) - direction * target)
 

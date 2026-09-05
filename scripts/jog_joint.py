@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration  # noqa: E402
-from playground.nubzuki.hardware import ServoHardware  # noqa: E402
+from playground.nubzuki.hardware import ServoHardware, _bus  # noqa: E402
 from playground.nubzuki.phone_controller import local_address  # noqa: E402
 from playground.nubzuki.robot_runtime import park  # noqa: E402
 
@@ -167,7 +167,7 @@ def main() -> None:
 
     def snapshot() -> dict:
         measured = hardware.read_positions()
-        raw = float(hardware.io.read_present_position([servo_id])[0])
+        raw = float(_bus(hardware.io.read_present_position, [servo_id])[0])
         return {
             "actual": math.degrees(float(measured[index])),
             "twin": math.degrees(float(measured[order.index(twin)])) if twin else None,
@@ -176,7 +176,7 @@ def main() -> None:
         }
 
     def apply_offset() -> str:
-        raw = float(hardware.io.read_present_position([servo_id])[0])
+        raw = float(_bus(hardware.io.read_present_position, [servo_id])[0])
         new_offset = math.degrees(raw - direction * math.radians(at_deg))
         old_offset = float(calibration.joints[joint]["offset_deg"])
         if abs(new_offset - old_offset) > 45.0:
