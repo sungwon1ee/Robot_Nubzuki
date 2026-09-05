@@ -95,7 +95,6 @@ class ImuFilter:
         self.bad = {"gravity": 0, "gyro": 0}
         self.dropouts = {"gravity": 0, "gyro": 0}
         self.limit = max(1, int(round(IMU_STALE_LIMIT_S / dt)))
-        self.reported = time.monotonic()
 
     def _channel(self, name: str, value, low: float, high: float,
                  previous: np.ndarray | None) -> np.ndarray:
@@ -128,18 +127,16 @@ class ImuFilter:
         # projected_gravity is the direction gravity acts IN, so upright is
         # [0, 0, -1]. Negate.
         self.last = -gravity / float(np.linalg.norm(gravity))
-        now = time.monotonic()
-        if (any(self.dropouts.values())
-                and now - self.reported >= IMU_REPORT_INTERVAL_S):
-            print(
-                f"\rIMU dropouts in {IMU_REPORT_INTERVAL_S:.0f} s: "
-                f"gyro {self.dropouts['gyro']}, gravity {self.dropouts['gravity']} "
-                f"(holding last good)      ",
-                flush=True,
-            )
-            self.dropouts = {"gravity": 0, "gyro": 0}
-            self.reported = now
         return gyro, self.last
+
+    def drain_dropouts(self) -> dict:
+        """Counts since the last call, then reset.
+
+        The status line belongs to the control loop: two writers on one line
+        is how the joint-swing readout ended up invisible."""
+        counts = dict(self.dropouts)
+        self.dropouts = {"gravity": 0, "gyro": 0}
+        return counts
 
 
 def _make_controller(control: str, host: str, web_port: int):
@@ -373,6 +370,28 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 debug_rows += 1
                 if debug_rows % calibration.control_frequency_hz == 0:
                     debug_file.flush()
+            activity_min = np.minimum(activity_min, requested)
+            activity_max = np.maximum(activity_max, requested)
+            if time.monotonic() - activity_last >= IMU_REPORT_INTERVAL_S:
+                swing = np.degrees(activity_max - activity_min)
+                groups = (
+                    ("L leg", [n for n in calibration.joint_order if n.startswith("left_")]),
+                    ("R leg", [n for n in calibration.joint_order if n.startswith("right_")]),
+                    ("head", list(HEAD_JOINTS)),
+                )
+                summary = "  ".join(
+                    f"{label} {max(swing[calibration.joint_order.index(n)] for n in names):.1f}deg"
+                    for label, names in groups
+                )
+                dropouts = imu_filter.drain_dropouts()
+                note = (
+                    "" if not any(dropouts.values())
+                    else f" | IMU drops gyro {dropouts['gyro']}, grav {dropouts['gravity']}"
+                )
+                print(f"Swing 2s | {summary}{note}", flush=True)
+                activity_min = np.full(14, np.inf)
+                activity_max = np.full(14, -np.inf)
+                activity_last = time.monotonic()
             previous_targets = requested
             time.sleep(max(0.0, dt - (time.monotonic() - started)))
     finally:
