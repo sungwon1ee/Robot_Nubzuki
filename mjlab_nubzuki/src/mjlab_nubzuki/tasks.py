@@ -119,21 +119,40 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     # the full usable envelope, commanded from iteration 0 rather than grown by
     # a curriculum whose MicroDuck schedule (500-2000 iters) does not fit this
     # run. Stage 1 kept these at +/-0.03 only to stop the input neurons dying.
+    # Head command range, ramped the way upstream does rather than opened wide
+    # from step 0: a posture objective competing with an unformed gait is what
+    # a curriculum exists to avoid. Upstream's five stages (5/15/35/65/100% of
+    # the final cap) are kept, rescaled to Nubzuki's much smaller reachable
+    # deltas -- its final +/-1.10 rad pitch is several times this robot's whole
+    # range. The two pitch lower bounds stay pinned at zero at every stage: the
+    # charger under the head blocks travel below park, so the ramp may only
+    # open upward (see NO_DOWNWARD_TRAVEL in robot.py, which moves the joint
+    # limit to match).
     head = cfg.commands["head_pose"]
     head.ranges = (
-        # The charger blocks downward travel, so neither pitch is ever
-        # commanded below park (see NO_DOWNWARD_TRAVEL in robot.py, which moves
-        # the joint limit to match -- the command range alone would not stop
-        # the policy's own action from pushing into the obstruction).
-        (0.00, 0.47),   # neck_pitch: park -11.9 deg, up to +26.9 deg
-        (0.00, 0.33),   # head_pitch: park -8.1 deg, up to +18.9 deg
-        (-0.50, 0.50),  # head_yaw: park 0 deg, room +/-31.5 deg
-        (-0.17, 0.17),  # head_roll: park 0 deg, room +/-10.8 deg
+        (0.00, 0.024),    # neck_pitch: park .. park +1.4 deg
+        (0.00, 0.017),    # head_pitch: park .. park +1.0 deg
+        (-0.025, 0.025),  # head_yaw:   +/-1.4 deg
+        (-0.009, 0.009),  # head_roll:  +/-0.5 deg
     )
     head.zero_command_prob = 0.25
-    cfg.curriculum.pop("head_pose_range", None)
-    cfg.curriculum.pop("head_pose_bias_weight", None)
-    cfg.rewards["head_pose_bias"].weight = 1.0
+    cfg.curriculum["head_pose_range"].params["range_stages"] = [
+        {"step": 0 * 24, "ranges": ((+0.000, +0.024), (+0.000, +0.017), (-0.025, +0.025), (-0.009, +0.009))},
+        {"step": 500 * 24, "ranges": ((+0.000, +0.070), (+0.000, +0.050), (-0.075, +0.075), (-0.026, +0.026))},
+        {"step": 1000 * 24, "ranges": ((+0.000, +0.164), (+0.000, +0.115), (-0.175, +0.175), (-0.059, +0.059))},
+        {"step": 1500 * 24, "ranges": ((+0.000, +0.305), (+0.000, +0.215), (-0.325, +0.325), (-0.111, +0.111))},
+        {"step": 2000 * 24, "ranges": ((+0.000, +0.470), (+0.000, +0.330), (-0.500, +0.500), (-0.170, +0.170))},
+    ]
+
+    # head_pose_bias prices the residual head droop. Upstream holds it at zero
+    # until a gait exists and only then ramps it; starting at 1.0 taxed posture
+    # precision from step 0.
+    cfg.curriculum["head_pose_bias_weight"].params["weight_stages"] = [
+        {"step": 0, "weight": 0.0},
+        {"step": 600 * 24, "weight": 1.0},
+        {"step": 1000 * 24, "weight": 2.0},
+        {"step": 1500 * 24, "weight": 3.0},
+    ]
     body = cfg.commands["body_pose"]
     body.ranges = ((0.0, 0.0),) * 6
     cfg.curriculum.pop("body_pose_range", None)
