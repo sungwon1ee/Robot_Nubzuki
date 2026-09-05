@@ -32,6 +32,8 @@ def test_bam_home_uses_root_height_and_calibrated_park_pose():
     assert 'calibration["joints"][name]["park_deg"]' in robot
     assert 'pose["left_knee"] = math.radians(-2.25)' in robot
     assert 'pose["right_knee"] = math.radians(-2.25)' in robot
+    assert 'pose["left_ankle"] = math.radians(-3.2)' in robot
+    assert 'pose["right_ankle"] = math.radians(-3.2)' in robot
     assert "target.copy_(cmd.pos)" in robot
 
 
@@ -42,6 +44,15 @@ def test_bam_preserves_nubzuki_collision_masks_and_clean_playback():
     assert "collisions=(COLLISIONS,)" not in robot
     assert '"push_robot"' in tasks
     assert "cfg.events.pop(event_name, None)" in tasks
+    assert "cfg.sim.contact_sensor_maxmatch = 128" in tasks
+    assert 'cfg.events["reset_base"].params["pose_range"]' in tasks
+    assert "NUBZUKI_BAM_DETAILED_ROBOT_CFG if play" in tasks
+    assert 'NUBZUKI_DETAILED_XML = REPOSITORY_ROOT.parent / "Nubzuki/mjcf/nubzuki_v1.xml"' in robot
+    assert 'pos=(0.0, 0.0, 0.20945)' in robot
+    assert 'trunk_proxy.name = "trunk_head_collision_proxy"' in robot
+    assert 'head_proxy.name = "head_trunk_collision_proxy"' in robot
+    assert "for joint_name in JOINT_ACTUATOR_ORDER:" in robot
+    assert "spec.delete(actuator)" in robot
 
 
 def test_bam_training_starts_with_balance_curriculum():

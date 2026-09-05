@@ -6,8 +6,8 @@ Python 3.11 JAX/MJX trainer and real-robot runtime untouched.
 The first task uses MicroDuck's velocity-task design with the Nubzuki model and
 the official `feetech_sts3215_7_4V` BAM M6 actuator. Motor commands are delayed
 3--6 simulation steps inside BAM. Episodes start at the calibrated hardware
-park pose (with a 2.25-degree soft-limit-safe knee bend) and a 0.212 m root
-height. Small head-pose commands remain active from
+park pose (with a 2.25-degree soft-limit-safe knee bend and symmetric
+-3.2-degree ankles) and a 0.212 m root height. Small head-pose commands remain active from
 the beginning so head-command inputs can be expanded in a later curriculum.
 
 ## Colab setup

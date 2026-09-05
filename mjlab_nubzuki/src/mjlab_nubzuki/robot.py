@@ -15,14 +15,20 @@ from mjlab_microduck.actuator import (
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 NUBZUKI_XML = REPOSITORY_ROOT / "playground/nubzuki/xmls/nubzuki_mjx.xml"
+NUBZUKI_DETAILED_XML = REPOSITORY_ROOT.parent / "Nubzuki/mjcf/nubzuki_v1.xml"
 CALIBRATION_JSON = REPOSITORY_ROOT / "config/nubzuki_calibration.json"
 STS3215_M6_JSON = Path(__file__).resolve().parent / "params/feetech_sts3215_7_4V_m6.json"
+JOINT_ACTUATOR_ORDER = (
+    "left_hip_yaw", "left_hip_roll", "left_hip_pitch", "left_knee", "left_ankle",
+    "right_hip_yaw", "right_hip_roll", "right_hip_pitch", "right_knee", "right_ankle",
+    "neck_pitch", "head_pitch", "head_yaw", "head_roll",
+)
 
 
-def get_nubzuki_spec() -> mujoco.MjSpec:
-    if not NUBZUKI_XML.exists():
-        raise FileNotFoundError(f"Nubzuki XML not found: {NUBZUKI_XML}")
-    spec = mujoco.MjSpec.from_file(str(NUBZUKI_XML))
+def _load_nubzuki_spec(xml_path: Path) -> mujoco.MjSpec:
+    if not xml_path.exists():
+        raise FileNotFoundError(f"Nubzuki XML not found: {xml_path}")
+    spec = mujoco.MjSpec.from_file(str(xml_path))
     # MicroDuck's velocity task consistently calls the torso trunk_base.
     # Keep that contract so its battle-tested rewards and randomizers can be
     # reused without copying or forking thousands of lines of MDP code.
@@ -32,6 +38,72 @@ def get_nubzuki_spec() -> mujoco.MjSpec:
     spec.sensor("gyro").name = "imu_ang_vel"
     spec.sensor("local_linvel").name = "imu_lin_vel"
     spec.sensor("accelerometer").name = "imu_accel"
+
+    # BAM receives commands in articulation joint order. The original XML
+    # declared head actuators between the two legs, so BAM torque column 5 was
+    # applied to the neck while it represented right_hip_yaw, and subsequent
+    # columns were shifted likewise. Rebuild actuators in exact joint order.
+    for actuator in list(spec.actuators):
+        spec.delete(actuator)
+    for joint_name in JOINT_ACTUATOR_ORDER:
+        actuator = spec.add_actuator()
+        actuator.name = joint_name
+        actuator.trntype = mujoco.mjtTrn.mjTRN_JOINT
+        actuator.target = joint_name
+        actuator.set_to_position(13.37)
+    return spec
+
+
+def get_nubzuki_spec() -> mujoco.MjSpec:
+    """Lightweight collision model used by vectorized training."""
+    return _load_nubzuki_spec(NUBZUKI_XML)
+
+
+def get_nubzuki_detailed_spec() -> mujoco.MjSpec:
+    """Existing CAD visuals and SDF collision model used by local playback."""
+    # The detailed CAD project is available beside this repository on the
+    # development Mac. Colab only receives this repository, so retain a useful
+    # playback fallback there instead of failing task registration.
+    xml_path = NUBZUKI_DETAILED_XML if NUBZUKI_DETAILED_XML.exists() else NUBZUKI_XML
+    spec = _load_nubzuki_spec(xml_path)
+    if xml_path == NUBZUKI_XML:
+        return spec
+
+    # Collision categories: floor=1, trunk=2, left leg=4, head=8,
+    # right leg=16. CAD collision geoms retain floor contact, while only the
+    # two opposite legs collide with each other. Assembly-overlapping
+    # trunk/leg and same-leg pairs are excluded.
+    for geom in spec.geoms:
+        name = geom.name
+        if not name or "collision" not in name:
+            continue
+        if name.startswith("left_"):
+            geom.contype, geom.conaffinity = 4, 1 | 16
+        elif name.startswith("right_"):
+            geom.contype, geom.conaffinity = 16, 1 | 4
+        elif name == "trunk_collision":
+            geom.contype, geom.conaffinity = 2, 1
+        elif name.startswith("head"):
+            geom.contype, geom.conaffinity = 8, 1
+
+    # The raw head and trunk SDFs overlap in the assembled CAD at HOME. Keep
+    # them for floor contact and use non-overlapping proxies solely for the
+    # required head-to-trunk self collision.
+    trunk_proxy = spec.body("trunk_base").add_geom()
+    trunk_proxy.name = "trunk_head_collision_proxy"
+    trunk_proxy.type = mujoco.mjtGeom.mjGEOM_BOX
+    trunk_proxy.pos = [0.012, 0.0, 0.035]
+    trunk_proxy.size = [0.085, 0.095, 0.075]
+    trunk_proxy.contype, trunk_proxy.conaffinity = 64, 128
+    trunk_proxy.rgba = [0.8, 0.2, 0.2, 0.0]
+
+    head_proxy = spec.body("head_roll_link").add_geom()
+    head_proxy.name = "head_trunk_collision_proxy"
+    head_proxy.type = mujoco.mjtGeom.mjGEOM_CAPSULE
+    head_proxy.fromto = [0.079, -0.105, 0.041, 0.079, 0.105, 0.041]
+    head_proxy.size = [0.105, 0.0, 0.0]
+    head_proxy.contype, head_proxy.conaffinity = 128, 64
+    head_proxy.rgba = [0.8, 0.2, 0.2, 0.0]
     return spec
 
 
@@ -48,6 +120,11 @@ def _load_park_pose() -> dict[str, float]:
     # reset and action offsets all agree instead of starting with hidden error.
     pose["left_knee"] = math.radians(-2.25)
     pose["right_knee"] = math.radians(-2.25)
+    # Train from a geometrically symmetric stance. The calibration file stores
+    # per-servo hardware park offsets, but carrying its 1.31-degree ankle
+    # mismatch into simulation makes the untrained robot collapse to one side.
+    pose["left_ankle"] = math.radians(-3.2)
+    pose["right_ankle"] = math.radians(-3.2)
     return pose
 
 
@@ -59,6 +136,14 @@ HOME_FRAME = EntityCfg.InitialStateCfg(
     # The calibrated ankles plus the small knee bend lower the foot edges, so
     # 0.212 m starts just above the floor without a reset contact impulse.
     pos=(0.0, 0.0, 0.212),
+    joint_pos=HOME_JOINT_POS,
+    joint_vel={r".*": 0.0},
+)
+
+DETAILED_HOME_FRAME = EntityCfg.InitialStateCfg(
+    # Detailed CAD feet sit about 2.5 mm above their lightweight counterparts.
+    # This height gives both soles a shallow, symmetric initial floor contact.
+    pos=(0.0, 0.0, 0.20945),
     joint_pos=HOME_JOINT_POS,
     joint_vel={r".*": 0.0},
 )
@@ -137,6 +222,15 @@ NUBZUKI_BAM_ROBOT_CFG = EntityCfg(
     # MicroDuck's FULL_COLLISION editor sets every matched geom to contype=1,
     # which re-enables Nubzuki's intentionally disabled overlapping hip-link
     # proxies and makes the robot explosively self-collide at reset.
+    articulation=EntityArticulationInfoCfg(
+        actuators=(ACTUATORS,),
+        soft_joint_pos_limit_factor=0.9,
+    ),
+)
+
+NUBZUKI_BAM_DETAILED_ROBOT_CFG = EntityCfg(
+    spec_fn=get_nubzuki_detailed_spec,
+    init_state=DETAILED_HOME_FRAME,
     articulation=EntityArticulationInfoCfg(
         actuators=(ACTUATORS,),
         soft_joint_pos_limit_factor=0.9,

@@ -30,7 +30,7 @@ microduck_actuator.BacklashEncoderBamActuatorCfg = _LegacyBacklashCfg
 from mjlab_microduck.tasks import microduck_velocity_env_cfg as velocity_module
 from mjlab_microduck.tasks.microduck_velocity_env_cfg import MicroduckRlCfg
 
-from .robot import NUBZUKI_BAM_ROBOT_CFG
+from .robot import NUBZUKI_BAM_DETAILED_ROBOT_CFG, NUBZUKI_BAM_ROBOT_CFG
 
 
 class NubzukiOnPolicyRunner(VelocityOnPolicyRunner):
@@ -41,7 +41,8 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     # The factory reads this module global when constructing the scene. Replace
     # only the entity; reward/observation/event code remains upstream MicroDuck.
     original_robot = velocity_module.MICRODUCK_WALK_ROBOT_CFG
-    velocity_module.MICRODUCK_WALK_ROBOT_CFG = NUBZUKI_BAM_ROBOT_CFG
+    robot_cfg = NUBZUKI_BAM_DETAILED_ROBOT_CFG if play else NUBZUKI_BAM_ROBOT_CFG
+    velocity_module.MICRODUCK_WALK_ROBOT_CFG = robot_cfg
     try:
         cfg = velocity_module.make_microduck_velocity_env_cfg(play=play)
     finally:
@@ -112,6 +113,16 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
 
     if play:
         cfg.scene.num_envs = min(cfg.scene.num_envs, 16)
+        cfg.events["reset_base"].params["pose_range"] = {
+            "x": (0.0, 0.0),
+            "y": (0.0, 0.0),
+            "z": (0.0, 0.0),
+            "yaw": (0.0, 0.0),
+        }
+        # Detailed SDF bodies generate more candidate matches than the
+        # lightweight training proxies. Keep foot-contact observations intact
+        # instead of truncating them at MuJoCo Warp's default of 64.
+        cfg.sim.contact_sensor_maxmatch = 128
         # Playback should show the policy/home pose under deterministic nominal
         # conditions. Upstream's play config still contains training pushes and
         # domain randomization, which makes a zero-agent HOME check misleading.
