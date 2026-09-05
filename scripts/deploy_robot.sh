@@ -20,6 +20,16 @@ WEB_PORT="${WEB_PORT:-8766}"
 TASK="${TASK:-Mjlab-Velocity-Flat-BAM-Nubzuki}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# One authentication for the whole run. Without this the script asks for the
+# password four separate times (mkdir, scp, git pull, run); ControlMaster opens
+# a single connection up front and every later ssh/scp rides on it.
+CONTROL_PATH="${TMPDIR:-/tmp}/nubzuki-deploy-%r@%h-%p"
+SSH_OPTS=(-o ControlMaster=auto -o "ControlPath=$CONTROL_PATH" -o ControlPersist=600)
+
+close_master() {
+  ssh "${SSH_OPTS[@]}" -O exit "$ROBOT_HOST" 2>/dev/null || true
+}
 CHECKPOINT=""
 NAME=""
 RUN=1
@@ -43,6 +53,12 @@ CHECKPOINT="$(cd "$(dirname "$CHECKPOINT")" && pwd)/$(basename "$CHECKPOINT")"
 [[ -f "$CHECKPOINT" ]] || { echo "No such checkpoint: $CHECKPOINT" >&2; exit 2; }
 NAME="${NAME:-$(basename "${CHECKPOINT%.pt}")}"
 
+echo "== 0/4 connect =="
+echo "Authenticating to $ROBOT_HOST once; the rest of the run reuses it."
+ssh "${SSH_OPTS[@]}" -o ConnectTimeout=10 "$ROBOT_HOST" true
+trap close_master EXIT
+
+echo
 echo "== 1/4 export =="
 OUT_DIR="$REPO_ROOT/mjlab_nubzuki/deploy/$NAME"
 ( cd "$REPO_ROOT/mjlab_nubzuki" \
@@ -52,14 +68,14 @@ OUT_DIR="$REPO_ROOT/mjlab_nubzuki/deploy/$NAME"
 
 echo
 echo "== 2/4 copy to $ROBOT_HOST =="
-ssh "$ROBOT_HOST" "mkdir -p $ROBOT_REPO/policies/$NAME"
-scp "$OUT_DIR/policy.onnx" "$OUT_DIR/policy.json" "$ROBOT_HOST:$ROBOT_REPO/policies/$NAME/"
+ssh "${SSH_OPTS[@]}" "$ROBOT_HOST" "mkdir -p $ROBOT_REPO/policies/$NAME"
+scp "${SSH_OPTS[@]}" "$OUT_DIR/policy.onnx" "$OUT_DIR/policy.json" "$ROBOT_HOST:$ROBOT_REPO/policies/$NAME/"
 
 echo
 echo "== 3/4 update the robot's checkout =="
 # The MJLab observation builder lives in the repo, so the robot needs the same
 # commit that exported the policy.
-ssh "$ROBOT_HOST" "cd $ROBOT_REPO && git checkout $ROBOT_BRANCH && git pull origin $ROBOT_BRANCH"
+ssh "${SSH_OPTS[@]}" "$ROBOT_HOST" "cd $ROBOT_REPO && git checkout $ROBOT_BRANCH && git pull origin $ROBOT_BRANCH"
 
 if [[ "$RUN" -eq 0 ]]; then
   echo
@@ -72,7 +88,7 @@ echo
 echo "== 4/4 run =="
 echo "Support the robot BEFORE pressing ARM. Phone: http://${ROBOT_HOST#*@}:$WEB_PORT"
 echo
-ssh -t "$ROBOT_HOST" \
+ssh "${SSH_OPTS[@]}" -t "$ROBOT_HOST" \
   "cd $ROBOT_REPO && ./.venv/bin/python -u -m playground.nubzuki.cli robot \
      --policy policies/$NAME/policy.onnx \
      --port $SERIAL_PORT \
