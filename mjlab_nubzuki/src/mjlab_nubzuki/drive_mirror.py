@@ -38,6 +38,36 @@ def _copy(source: Path, destination: Path) -> None:
     os.replace(staging, destination)
 
 
+def _append_copy(source: Path, destination: Path) -> None:
+    """Extend an append-only file in place instead of replacing it.
+
+    TensorBoard reads an event file incrementally and remembers how far it got.
+    Replacing the file wholesale -- which is the right thing for a checkpoint --
+    swaps the inode underneath that reader, and it silently stops following the
+    run: the data is all there on disk and the dashboard stays empty. Event
+    files only ever grow, so copy the new tail onto the same file.
+    """
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    source_size = source.stat().st_size
+    written = destination.stat().st_size if destination.exists() else 0
+    if written > source_size:
+        # A new run reused the name, or the file was truncated: start over.
+        _copy(source, destination)
+        return
+    if written == source_size:
+        return
+    with source.open("rb") as reader, destination.open("ab") as writer:
+        reader.seek(written)
+        while chunk := reader.read(1 << 20):
+            writer.write(chunk)
+        writer.flush()
+        os.fsync(writer.fileno())
+
+
+def _is_event_file(path: Path) -> bool:
+    return "tfevents" in path.name
+
+
 def _is_stale(source: Path, destination: Path) -> bool:
     if not destination.exists():
         return True
@@ -77,7 +107,10 @@ def _sync(log_dir: Path, destination_root: Path, checkpoint: Path | None) -> Non
             if "videos" in source.relative_to(log_dir).parts:
                 continue
             destination = destination_root / source.relative_to(log_dir)
-            if _is_stale(source, destination):
+            if _is_event_file(source):
+                _append_copy(source, destination)
+                copied += 1
+            elif _is_stale(source, destination):
                 _copy(source, destination)
                 copied += 1
         _prune(destination_root)
