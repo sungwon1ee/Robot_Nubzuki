@@ -51,19 +51,54 @@ def _is_mjlab_policy(policy_path: str) -> bool:
         raise RuntimeError(f"Cannot read {metadata}: {error}") from error
 
 
-def _projected_gravity(imu_data: dict) -> np.ndarray:
-    """Unit gravity direction in the body frame, as MJLab defines it."""
-    gravity = np.asarray(imu_data.get("gravity"), dtype=float)
-    if gravity.shape != (3,) or not np.isfinite(gravity).all():
-        raise RuntimeError("IMU returned no usable gravity vector")
-    norm = float(np.linalg.norm(gravity))
-    if norm < 1.0:
-        raise RuntimeError(f"Implausible gravity magnitude: {norm:.2f} m/s^2")
-    # The BNO055 reports gravity with the accelerometer's convention: at rest
-    # the vector points UP, away from gravity (+g on the up axis), which read
-    # [0.07, 0.05, +1.00] standing in the park pose. MJLab's projected_gravity
-    # is the direction gravity acts IN, so upright is [0, 0, -1]. Negate.
-    return -gravity / norm
+# Plausible magnitude band for a fused gravity vector, in m/s^2. The BNO055
+# occasionally hands back a near-zero or partial sample over I2C; those are
+# dropouts, not the robot being in freefall.
+GRAVITY_MIN_MAGNITUDE = 5.0
+GRAVITY_MAX_MAGNITUDE = 15.0
+# How long the vector may stay unusable before the run stops. A quarter second
+# of held-over gravity is survivable; a disconnected IMU is not.
+GRAVITY_STALE_LIMIT_S = 0.25
+
+
+class ProjectedGravity:
+    """Unit gravity direction in the body frame, as MJLab defines it.
+
+    Holds the last good reading across dropouts. A single bad I2C sample is not
+    a reason to end a walk: raising here dropped a running robot mid-stride,
+    which is exactly the failure mode the controller-freshness handling below
+    was written to avoid. A genuinely dead IMU still stops the run, just after
+    a few samples instead of one.
+    """
+
+    def __init__(self, dt: float):
+        self.last: np.ndarray | None = None
+        self.bad_samples = 0
+        self.limit = max(1, int(round(GRAVITY_STALE_LIMIT_S / dt)))
+        self.total_dropouts = 0
+
+    def read(self, imu_data: dict) -> np.ndarray:
+        gravity = np.asarray(imu_data.get("gravity"), dtype=float)
+        usable = gravity.shape == (3,) and np.isfinite(gravity).all()
+        norm = float(np.linalg.norm(gravity)) if usable else 0.0
+        if usable and GRAVITY_MIN_MAGNITUDE <= norm <= GRAVITY_MAX_MAGNITUDE:
+            self.bad_samples = 0
+            # The BNO055 reports gravity with the accelerometer's convention:
+            # at rest the vector points UP, away from gravity. MJLab's
+            # projected_gravity is the direction gravity acts IN, so upright is
+            # [0, 0, -1]. Negate.
+            self.last = -gravity / norm
+            return self.last
+        self.bad_samples += 1
+        self.total_dropouts += 1
+        if self.last is None or self.bad_samples > self.limit:
+            raise RuntimeError(
+                f"IMU gravity unusable for {self.bad_samples} samples "
+                f"(magnitude {norm:.2f} m/s^2). Check the BNO055 wiring."
+            )
+        if self.bad_samples == 1:
+            print(f"IMU gravity dropout ({norm:.2f} m/s^2), holding last good value")
+        return self.last
 
 
 def _make_controller(control: str, host: str, web_port: int):
@@ -117,6 +152,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             "Run `nubzuki-standing identify-head` on the robot first."
         )
     is_mjlab = _is_mjlab_policy(policy_path)
+    gravity_source = ProjectedGravity(1.0 / calibration.control_frequency_hz)
     if is_mjlab:
         policy = MjlabPolicy(policy_path, calibration)
         builder = MjlabObservationBuilder(policy)
@@ -197,7 +233,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                         # the body frame. A remapped or upside-down IMU shows
                         # up here as a tilt the policy would spend the whole
                         # run fighting, so refuse to arm on it.
-                        gravity = _projected_gravity(imu.read())
+                        gravity = gravity_source.read(imu.read())
                         if gravity[2] > -0.9:
                             raise RuntimeError(
                                 f"Projected gravity is {np.round(gravity, 3).tolist()}, "
@@ -246,7 +282,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             contacts = feet.read()
             if is_mjlab:
                 observation = builder.build(
-                    imu_data["gyro"], _projected_gravity(imu_data), qpos, qvel,
+                    imu_data["gyro"], gravity_source.read(imu_data), qpos, qvel,
                     np.asarray([forward, 0.0, yaw_rate]),
                     head_pose_command(head_targets, policy),
                 )
