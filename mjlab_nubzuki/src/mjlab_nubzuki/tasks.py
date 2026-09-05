@@ -30,11 +30,35 @@ microduck_actuator.BacklashEncoderBamActuatorCfg = _LegacyBacklashCfg
 from mjlab_microduck.tasks import microduck_velocity_env_cfg as velocity_module
 from mjlab_microduck.tasks.microduck_velocity_env_cfg import MicroduckRlCfg
 
+from .drive_mirror import RunMirror
 from .robot import NUBZUKI_BAM_DETAILED_ROBOT_CFG, NUBZUKI_BAM_ROBOT_CFG
 
 
 class NubzukiOnPolicyRunner(VelocityOnPolicyRunner):
-    """Standard MJLab velocity runner without MicroDuck-specific export hooks."""
+    """Standard MJLab velocity runner without MicroDuck-specific export hooks.
+
+    Adds one behaviour: when NUBZUKI_MIRROR_DIR is set (Colab -> Google Drive),
+    every checkpoint save also copies the run directory there in the
+    background, so an interrupted session never loses more than one save
+    interval and TensorBoard can watch the Drive copy directly.
+    """
+
+    def __init__(self, env, train_cfg, log_dir=None, device="cpu", **kwargs):
+        super().__init__(env, train_cfg, log_dir, device, **kwargs)
+        self._mirror = RunMirror(log_dir) if log_dir is not None else None
+
+    def save(self, path: str, infos=None) -> None:
+        super().save(path, infos)
+        if self._mirror is not None:
+            self._mirror.sync(path)
+
+    def learn(self, *args, **kwargs):
+        try:
+            return super().learn(*args, **kwargs)
+        finally:
+            if self._mirror is not None and self._mirror.enabled:
+                print("[INFO] Flushing final mirror copy...")
+                self._mirror.flush()
 
 
 def make_nubzuki_bam_env_cfg(play: bool = False):
