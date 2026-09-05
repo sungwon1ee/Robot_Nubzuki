@@ -39,6 +39,7 @@ RUN=1
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --name) NAME="$2"; shift 2 ;;
+    --message|-m) COMMIT_MSG="$2"; shift 2 ;;
     --task) TASK="$2"; shift 2 ;;
     --host) ROBOT_HOST="$2"; shift 2 ;;
     --no-run) RUN=0; shift ;;
@@ -61,7 +62,39 @@ ssh "${SSH_OPTS[@]}" -o ConnectTimeout=10 "$ROBOT_HOST" true
 trap close_master EXIT
 
 echo
-echo "== 1/4 export =="
+echo "== 1/6 calibration =="
+# The robot is where joints get re-zeroed, so its calibration file is the
+# authority, not this checkout. Bring any change back before anything else:
+# the robot's git pull further down would otherwise collide with it, and the
+# export needs the same calibration the robot will run.
+CAL="config/nubzuki_calibration.json"
+ROBOT_CAL="$(mktemp)"
+scp -q "${SSH_OPTS[@]}" "$ROBOT_HOST:$ROBOT_REPO/$CAL" "$ROBOT_CAL"
+if cmp -s "$ROBOT_CAL" "$REPO_ROOT/$CAL"; then
+  echo "Calibration matches the robot."
+else
+  echo "The robot's calibration differs; taking it as the source of truth:"
+  diff <(python3 -m json.tool "$REPO_ROOT/$CAL") <(python3 -m json.tool "$ROBOT_CAL") \
+    | grep -E '^[<>]' | head -20 || true
+  cp "$ROBOT_CAL" "$REPO_ROOT/$CAL"
+fi
+rm -f "$ROBOT_CAL"
+
+echo
+echo "== 2/6 commit and push =="
+cd "$REPO_ROOT"
+if [[ -n "$(git status --porcelain)" ]]; then
+  git add -A
+  git commit -q -m "${COMMIT_MSG:-Deploy $NAME}"
+  echo "Committed: $(git log --oneline -1)"
+else
+  echo "Nothing to commit."
+fi
+git push -q origin "$ROBOT_BRANCH"
+echo "Pushed to origin/$ROBOT_BRANCH."
+
+echo
+echo "== 3/6 export =="
 OUT_DIR="$REPO_ROOT/mjlab_nubzuki/deploy/$NAME"
 ( cd "$REPO_ROOT/mjlab_nubzuki" \
   && uv run python scripts/export_deploy.py "$CHECKPOINT" --task "$TASK" --out "$OUT_DIR" )
@@ -69,15 +102,19 @@ OUT_DIR="$REPO_ROOT/mjlab_nubzuki/deploy/$NAME"
   || { echo "Export did not produce both files" >&2; exit 1; }
 
 echo
-echo "== 2/4 copy to $ROBOT_HOST =="
+echo "== 4/6 copy to $ROBOT_HOST =="
 ssh "${SSH_OPTS[@]}" "$ROBOT_HOST" "mkdir -p $ROBOT_REPO/policies/$NAME"
 scp "${SSH_OPTS[@]}" "$OUT_DIR/policy.onnx" "$OUT_DIR/policy.json" "$ROBOT_HOST:$ROBOT_REPO/policies/$NAME/"
 
 echo
-echo "== 3/4 update the robot's checkout =="
+echo "== 5/6 update the robot's checkout =="
 # The MJLab observation builder lives in the repo, so the robot needs the same
 # commit that exported the policy.
-ssh "${SSH_OPTS[@]}" "$ROBOT_HOST" "cd $ROBOT_REPO && git checkout $ROBOT_BRANCH && git pull origin $ROBOT_BRANCH"
+# The robot's own calibration edit is now committed here, so discarding its
+# working copy loses nothing and lets the pull run clean.
+ssh "${SSH_OPTS[@]}" "$ROBOT_HOST" \
+  "cd $ROBOT_REPO && git checkout -- $CAL 2>/dev/null; \
+   git checkout $ROBOT_BRANCH && git pull origin $ROBOT_BRANCH"
 
 if [[ "$RUN" -eq 0 ]]; then
   echo
@@ -87,7 +124,7 @@ if [[ "$RUN" -eq 0 ]]; then
 fi
 
 echo
-echo "== 4/4 run =="
+echo "== 6/6 run =="
 echo "Support the robot BEFORE pressing ARM. Phone: http://${ROBOT_HOST#*@}:$WEB_PORT"
 echo
 ssh "${SSH_OPTS[@]}" -t "$ROBOT_HOST" \

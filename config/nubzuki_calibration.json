@@ -31,9 +31,18 @@
     "head_roll"
   ],
   "joystick": {
-    "linear_velocity_x": [-0.1, 0.2],
-    "linear_velocity_y": [-0.08, 0.08],
-    "angular_velocity_yaw": [-0.8, 0.8]
+    "linear_velocity_x": [
+      -0.1,
+      0.2
+    ],
+    "linear_velocity_y": [
+      -0.08,
+      0.08
+    ],
+    "angular_velocity_yaw": [
+      -0.8,
+      0.8
+    ]
   },
   "runtime": {
     "max_motor_velocity_rad_s": 5.24,
@@ -44,24 +53,153 @@
   "policy": {
     "name": "standing",
     "action_scale_rad": 0.25,
-    "action_delay_steps": [0, 2],
+    "action_delay_steps": [
+      0,
+      2
+    ],
     "upstream_commit": "ba59de88ab76163f2e0c2c95b4cd45fea5745106"
   },
   "joints": {
-    "left_hip_yaw":   {"servo_id": 20, "direction": 1,  "offset_deg": -3.0,  "limits_deg": [-20.0, 20.0], "park_deg": 0.14},
-    "left_hip_roll":  {"servo_id": 21, "direction": -1, "offset_deg": -47.78,"limits_deg": [-10.0, 20.0], "park_deg": 7.0},
-    "left_hip_pitch": {"servo_id": 22, "direction": -1, "offset_deg": 0.0,   "limits_deg": [-20.0, 20.0], "park_deg": 0.48},
-    "left_knee":      {"servo_id": 23, "direction": -1, "offset_deg": 0.0,   "limits_deg": [-45.0, 0.0],  "park_deg": 0.0},
-    "left_ankle":     {"servo_id": 24, "direction": -1, "offset_deg": 0.0,   "limits_deg": [-30.0, 30.0], "park_deg": -4.53},
-    "neck_pitch":     {"servo_id": 30, "direction": -1, "offset_deg": 0.0,   "limits_deg": [-20.0, 20.0], "park_deg": -11.91},
-    "head_pitch":     {"servo_id": 31, "direction": -1, "offset_deg": 0.0,   "limits_deg": [-20.0, 15.0], "park_deg": -8.13},
-    "head_yaw":       {"servo_id": 32, "direction": 1,  "offset_deg": -6.55, "limits_deg": [-35.0, 35.0], "park_deg": 0.0},
-    "head_roll":      {"servo_id": 33, "direction": 1,  "offset_deg": -3.03, "limits_deg": [-12.0, 12.0], "park_deg": 0.0},
-    "right_hip_yaw":  {"servo_id": 10, "direction": -1, "offset_deg": -2.0,  "limits_deg": [-20.0, 20.0], "park_deg": 0.24},
-    "right_hip_roll": {"servo_id": 11, "direction": 1,  "offset_deg": 4.88,  "limits_deg": [-10.0, 20.0], "park_deg": 7.0},
-    "right_hip_pitch":{"servo_id": 12, "direction": 1,  "offset_deg": 5.0,   "limits_deg": [-20.0, 20.0], "park_deg": 0.67},
-    "right_knee":     {"servo_id": 13, "direction": 1,  "offset_deg": 2.0,   "limits_deg": [-45.0, 0.0],  "park_deg": 0.0},
-    "right_ankle":    {"servo_id": 14, "direction": 1,  "offset_deg": 3.0,   "limits_deg": [-30.0, 30.0], "park_deg": -3.22}
+    "left_hip_yaw": {
+      "servo_id": 20,
+      "direction": 1,
+      "offset_deg": -3.0,
+      "limits_deg": [
+        -20.0,
+        20.0
+      ],
+      "park_deg": 0.14
+    },
+    "left_hip_roll": {
+      "servo_id": 21,
+      "direction": -1,
+      "offset_deg": -47.78,
+      "limits_deg": [
+        -10.0,
+        20.0
+      ],
+      "park_deg": 7.0
+    },
+    "left_hip_pitch": {
+      "servo_id": 22,
+      "direction": -1,
+      "offset_deg": -22.899,
+      "limits_deg": [
+        -20.0,
+        20.0
+      ],
+      "park_deg": 0.48
+    },
+    "left_knee": {
+      "servo_id": 23,
+      "direction": -1,
+      "offset_deg": 0.0,
+      "limits_deg": [
+        -45.0,
+        0.0
+      ],
+      "park_deg": 0.0
+    },
+    "left_ankle": {
+      "servo_id": 24,
+      "direction": -1,
+      "offset_deg": 0.0,
+      "limits_deg": [
+        -30.0,
+        30.0
+      ],
+      "park_deg": -4.53
+    },
+    "neck_pitch": {
+      "servo_id": 30,
+      "direction": -1,
+      "offset_deg": 0.0,
+      "limits_deg": [
+        -20.0,
+        20.0
+      ],
+      "park_deg": -11.91
+    },
+    "head_pitch": {
+      "servo_id": 31,
+      "direction": -1,
+      "offset_deg": 0.0,
+      "limits_deg": [
+        -20.0,
+        15.0
+      ],
+      "park_deg": -8.13
+    },
+    "head_yaw": {
+      "servo_id": 32,
+      "direction": 1,
+      "offset_deg": -6.55,
+      "limits_deg": [
+        -35.0,
+        35.0
+      ],
+      "park_deg": 0.0
+    },
+    "head_roll": {
+      "servo_id": 33,
+      "direction": 1,
+      "offset_deg": -3.03,
+      "limits_deg": [
+        -12.0,
+        12.0
+      ],
+      "park_deg": 0.0
+    },
+    "right_hip_yaw": {
+      "servo_id": 10,
+      "direction": -1,
+      "offset_deg": -2.0,
+      "limits_deg": [
+        -20.0,
+        20.0
+      ],
+      "park_deg": 0.24
+    },
+    "right_hip_roll": {
+      "servo_id": 11,
+      "direction": 1,
+      "offset_deg": 4.88,
+      "limits_deg": [
+        -10.0,
+        20.0
+      ],
+      "park_deg": 7.0
+    },
+    "right_hip_pitch": {
+      "servo_id": 12,
+      "direction": 1,
+      "offset_deg": 5.0,
+      "limits_deg": [
+        -20.0,
+        20.0
+      ],
+      "park_deg": 0.67
+    },
+    "right_knee": {
+      "servo_id": 13,
+      "direction": 1,
+      "offset_deg": 2.0,
+      "limits_deg": [
+        -45.0,
+        0.0
+      ],
+      "park_deg": 0.0
+    },
+    "right_ankle": {
+      "servo_id": 14,
+      "direction": 1,
+      "offset_deg": 3.0,
+      "limits_deg": [
+        -30.0,
+        30.0
+      ],
+      "park_deg": -3.22
+    }
   },
   "measured_link_masses_kg": {
     "trunk": 1.006,

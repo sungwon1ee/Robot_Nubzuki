@@ -33,30 +33,25 @@ from playground.nubzuki.phone_controller import PhoneController  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
-# Command ranges. These mirror what the policy was actually trained on
-# (see make_nubzuki_bam_env_cfg in tasks.py); commanding outside them is
-# extrapolation the walking policy has never seen.
-# --------------------------------------------------------------------------- #
-FORWARD_RANGE = (-0.15, 0.25)    # m/s, lin_vel_x
-YAW_RATE_RANGE = (-0.70, 0.70)   # rad/s, ang_vel_z (measured sufficient)
-# lin_vel_y is trained at zero: no strafing in this stage.
-# head_pose command is a 4D delta from the park pose:
-#   (neck_pitch, head_pitch, head_yaw, head_roll)
-# The park pose is not centred in the joint range, so these are asymmetric.
-HEAD_RANGES = (
-    (-0.09, 0.47),
-    (-0.15, 0.33),
-    (-0.50, 0.50),
-    (-0.17, 0.17),
-)
+# Command ranges are read from the training config of the checkpoint being
+# played, not hard-coded here: a policy trained with lin_vel_x in (0.04, 0.18)
+# must not be handed 0.25 just because the task config has moved on since.
+# These are only the fallback for a checkpoint with no params/env.yaml beside
+# it, and the run says so out loud when it uses them.
+FALLBACK_FORWARD_RANGE = (0.0, 0.0)
+FALLBACK_YAW_RATE_RANGE = (0.0, 0.0)
+FALLBACK_HEAD_RANGES = ((0.0, 0.0),) * 4
 DEADZONE = 0.1
 
 
 class PhoneCommandSource:
     """Turns one phone sample into (twist[3], head_pose[4])."""
 
-    def __init__(self, controller: PhoneController):
+    def __init__(self, controller: PhoneController, ranges: dict):
         self.controller = controller
+        self.forward_range = tuple(ranges["twist_lin_vel_x"])
+        self.yaw_rate_range = tuple(ranges["twist_ang_vel_z"])
+        self.head_ranges = [tuple(r) for r in ranges["head_pose"]]
         self._announced = False
         self._cache: tuple[list[float], list[float]] | None = None
         self._cached_at = 0.0
@@ -86,20 +81,20 @@ class PhoneCommandSource:
             # Head-only: both sticks drive the head, the legs hold still.
             twist = [0.0, 0.0, 0.0]
             head = [
-                scale_axis(stick["right_y"], HEAD_RANGES[0]),   # neck_pitch
-                scale_axis(-stick["left_y"], HEAD_RANGES[1]),   # head_pitch
-                scale_axis(stick["left_x"], HEAD_RANGES[2]),    # head_yaw
-                scale_axis(stick["right_x"], HEAD_RANGES[3]),   # head_roll
+                scale_axis(stick["right_y"], self.head_ranges[0]),   # neck_pitch
+                scale_axis(-stick["left_y"], self.head_ranges[1]),   # head_pitch
+                scale_axis(stick["left_x"], self.head_ranges[2]),    # head_yaw
+                scale_axis(stick["right_x"], self.head_ranges[3]),   # head_roll
             ]
             return twist, head
 
         # Walk mode: left stick = locomotion, right stick = small head yaw/pitch.
-        forward = scale_axis(stick["left_y"], FORWARD_RANGE)
-        yaw_rate = scale_axis(stick["left_x"], YAW_RATE_RANGE)
+        forward = scale_axis(stick["left_y"], self.forward_range)
+        yaw_rate = scale_axis(stick["left_x"], self.yaw_rate_range)
         head = [
             0.0,
-            scale_axis(-stick["right_y"], HEAD_RANGES[1]),      # head_pitch
-            scale_axis(stick["right_x"], HEAD_RANGES[2]),       # head_yaw
+            scale_axis(-stick["right_y"], self.head_ranges[1]),  # head_pitch
+            scale_axis(stick["right_x"], self.head_ranges[2]),   # head_yaw
             0.0,
         ]
         return [forward, 0.0, yaw_rate], head
@@ -123,8 +118,10 @@ def install_command_overrides(source: PhoneCommandSource) -> None:
         self.is_standing_env[:] = False
 
     def head_update(self) -> None:
-        if self._command.shape[1] != len(HEAD_RANGES):
-            return  # Some other pose command (e.g. body_pose): leave it alone.
+        # UniformPoseCommand also backs body_pose (6D); only the 4D head
+        # command is ours to drive.
+        if self._command.shape[1] != len(source.head_ranges):
+            return
         _twist, head = source.sample()
         self._command[:] = torch.tensor(
             head, device=self.device, dtype=self._command.dtype
@@ -158,15 +155,39 @@ def main() -> None:
         config=mjlab.TYRO_FLAGS,
     )
 
+    ranges = _command_ranges(play_cfg.checkpoint_file)
     controller = PhoneController(
         host=phone_args["host"], port=phone_args["port"], target_label="MJLab 시뮬레이터"
     )
     print(f"\nOpen this on your phone, on the same network:\n    {controller.url}\n")
-    install_command_overrides(PhoneCommandSource(controller))
+    install_command_overrides(PhoneCommandSource(controller, ranges))
     try:
         run_play(chosen_task, play_cfg)
     finally:
         controller.close()
+
+
+def _command_ranges(checkpoint_file: str | None) -> dict:
+    """What this checkpoint was trained to accept, straight from its run."""
+    from mjlab_nubzuki.run_config import find_env_yaml, trained_command_ranges
+
+    env_yaml = find_env_yaml(Path(checkpoint_file)) if checkpoint_file else None
+    if env_yaml is not None:
+        ranges = trained_command_ranges(env_yaml)
+        print(f"Command ranges from {env_yaml}:")
+        for key in ("twist_lin_vel_x", "twist_ang_vel_z"):
+            print(f"  {key}: {ranges[key]}")
+        return ranges
+    print(
+        "WARNING: no params/env.yaml beside this checkpoint, so the ranges it\n"
+        "         was trained with are unknown. The sticks will command zero.\n"
+        "         Copy the run's params/ directory next to the checkpoint."
+    )
+    return {
+        "twist_lin_vel_x": list(FALLBACK_FORWARD_RANGE),
+        "twist_ang_vel_z": list(FALLBACK_YAW_RATE_RANGE),
+        "head_pose": [list(r) for r in FALLBACK_HEAD_RANGES],
+    }
 
 
 def _split_phone_args(argv: list[str]) -> tuple[list[str], dict]:
