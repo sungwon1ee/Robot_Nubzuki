@@ -84,6 +84,22 @@ class NubzukiCalibration:
         canonical = json.dumps(self.data, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
+    @property
+    def head_sha256(self) -> str:
+        """Hash of only what head dynamics actually depend on.
+
+        Re-zeroing a leg changes the whole-file hash but cannot change how the
+        neck responds to a stick. Pinning the whole file made every leg
+        calibration invalidate a head measurement that was still perfectly
+        good.
+        """
+        subset = {
+            "control_frequency_hz": self.data["control_frequency_hz"],
+            "joints": {name: self.data["joints"][name] for name in HEAD_JOINTS},
+        }
+        canonical = json.dumps(subset, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
     def servo_id(self, name: str) -> int:
         return int(self.joints[name]["servo_id"])
 

@@ -33,8 +33,20 @@ class HeadDynamicsProfile:
     def __init__(self, data: dict, calibration: NubzukiCalibration):
         self.data = data
         self.measured = bool(data.get("measured", True))
-        if data.get("calibration_sha256") != calibration.sha256:
-            raise ValueError("Head dynamics profile does not match calibration")
+        # Accept a profile pinned to the whole calibration (how they used to be
+        # written) or to just the head joints. The head-scoped hash is what
+        # actually governs whether this measurement still applies.
+        matches = (
+            data.get("calibration_sha256") == calibration.sha256
+            or data.get("head_calibration_sha256") == calibration.head_sha256
+        )
+        if not matches:
+            raise ValueError(
+                "Head dynamics profile does not match calibration. If only "
+                "non-head joints changed, re-stamp it with "
+                "scripts/restamp_head_profile.py; otherwise re-run "
+                "`nubzuki-standing identify-head`."
+            )
         self.deadzone = {axis: float(data["joystick_deadzone"][axis]) for axis in AXES}
         self.joints = {
             name: JointDynamics(**{key: float(value) for key, value in data["joints"][name].items()})
@@ -58,6 +70,7 @@ class HeadDynamicsProfile:
                 "schema_version": 1,
                 "measured": False,
                 "calibration_sha256": calibration.sha256,
+                "head_calibration_sha256": calibration.head_sha256,
                 "control_frequency_hz": calibration.control_frequency_hz,
                 "joystick_deadzone": {axis: FALLBACK_DEADZONE for axis in AXES},
                 "joints": {
