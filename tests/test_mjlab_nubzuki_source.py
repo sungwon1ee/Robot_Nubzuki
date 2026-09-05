@@ -27,7 +27,26 @@ def test_bam_stage_keeps_head_commands_small_but_alive():
 
 def test_bam_home_uses_root_height_and_calibrated_park_pose():
     robot = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/robot.py").read_text()
-    assert "pos=(0.0, 0.0, 0.209)" in robot
+    assert "pos=(0.0, 0.0, 0.212)" in robot
     assert "HOME_JOINT_POS = _load_park_pose()" in robot
     assert 'calibration["joints"][name]["park_deg"]' in robot
+    assert 'pose["left_knee"] = math.radians(-2.25)' in robot
+    assert 'pose["right_knee"] = math.radians(-2.25)' in robot
     assert "target.copy_(cmd.pos)" in robot
+
+
+def test_bam_preserves_nubzuki_collision_masks_and_clean_playback():
+    robot = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/robot.py").read_text()
+    tasks = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/tasks.py").read_text()
+    assert "CollisionCfg" not in robot
+    assert "collisions=(COLLISIONS,)" not in robot
+    assert '"push_robot"' in tasks
+    assert "cfg.events.pop(event_name, None)" in tasks
+
+
+def test_bam_training_starts_with_balance_curriculum():
+    tasks = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/tasks.py").read_text()
+    assert '{"step": 0, "rel_standing_envs": 1.00}' in tasks
+    assert '{"step": 50 * 24, "rel_standing_envs": 0.60}' in tasks
+    assert '{"step": 220 * 24, "rel_standing_envs": 0.10}' in tasks
+    assert "twist.rel_standing_envs = 1.0" in tasks

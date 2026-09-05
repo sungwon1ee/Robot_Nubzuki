@@ -7,7 +7,6 @@ from pathlib import Path
 import mujoco
 import torch
 from mjlab.entity import EntityArticulationInfoCfg, EntityCfg
-from mjlab.utils.spec_config import CollisionCfg
 from mjlab_microduck.actuator import (
     FrictionDRBamActuator,
     FrictionDRBamActuatorCfg,
@@ -40,10 +39,16 @@ def _load_park_pose() -> dict[str, float]:
     """Use the same calibrated neutral pose in training and on hardware."""
     with CALIBRATION_JSON.open() as stream:
         calibration = json.load(stream)
-    return {
+    pose = {
         name: math.radians(float(calibration["joints"][name]["park_deg"]))
         for name in calibration["joint_order"]
     }
+    # A knee exactly at its 0-degree hard stop is clipped to -2.25 degrees by
+    # MJLab's 0.9 soft-limit reset. Make that small bend explicit so default,
+    # reset and action offsets all agree instead of starting with hidden error.
+    pose["left_knee"] = math.radians(-2.25)
+    pose["right_knee"] = math.radians(-2.25)
+    return pose
 
 
 HOME_JOINT_POS = _load_park_pose()
@@ -51,18 +56,11 @@ HOME_JOINT_POS = _load_park_pose()
 HOME_FRAME = EntityCfg.InitialStateCfg(
     # InitialStateCfg overrides the free-joint position from the XML, so the
     # standing height must be explicit here rather than relying on base@pos.
-    # The calibrated ankle pose lowers the front edge of the feet by ~4 mm,
-    # hence 0.209 m instead of the all-zero XML pose's 0.205 m.
-    pos=(0.0, 0.0, 0.209),
+    # The calibrated ankles plus the small knee bend lower the foot edges, so
+    # 0.212 m starts just above the floor without a reset contact impulse.
+    pos=(0.0, 0.0, 0.212),
     joint_pos=HOME_JOINT_POS,
     joint_vel={r".*": 0.0},
-)
-
-COLLISIONS = CollisionCfg(
-    geom_names_expr=(r".*_collision",),
-    condim={r"^(left|right)_foot_collision$": 3, r".*_collision": 1},
-    priority={r"^(left|right)_foot_collision$": 1},
-    friction={r"^(left|right)_foot_collision$": (1.0,)},
 )
 
 # This is the real actuator path, not an ideal PD plus a delay buffer. BAM M6
@@ -135,7 +133,10 @@ ACTUATORS = NubzukiSts3215BamActuatorCfg(
 NUBZUKI_BAM_ROBOT_CFG = EntityCfg(
     spec_fn=get_nubzuki_spec,
     init_state=HOME_FRAME,
-    collisions=(COLLISIONS,),
+    # Preserve the carefully separated collision masks from nubzuki_mjx.xml.
+    # MicroDuck's FULL_COLLISION editor sets every matched geom to contype=1,
+    # which re-enables Nubzuki's intentionally disabled overlapping hip-link
+    # proxies and makes the robot explosively self-collide at reset.
     articulation=EntityArticulationInfoCfg(
         actuators=(ACTUATORS,),
         soft_joint_pos_limit_factor=0.9,

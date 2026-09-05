@@ -67,6 +67,19 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     twist.ranges.lin_vel_y = (0.0, 0.0)
     twist.ranges.ang_vel_z = (-0.70, 0.70)
 
+    # At 4096 envs, one PPO iteration contains 24 control steps per env. The
+    # original MicroDuck schedule does not change until iteration 500, beyond
+    # this run's ~306 iterations. Nubzuki's weaker BAM-driven stance needs a
+    # short balance-first phase before most environments receive gait commands.
+    cfg.curriculum["standing_envs"].params["standing_stages"] = [
+        {"step": 0, "rel_standing_envs": 1.00},
+        {"step": 50 * 24, "rel_standing_envs": 0.60},
+        {"step": 100 * 24, "rel_standing_envs": 0.30},
+        {"step": 150 * 24, "rel_standing_envs": 0.15},
+        {"step": 220 * 24, "rel_standing_envs": 0.10},
+    ]
+    twist.rel_standing_envs = 1.0
+
     # Commands are deltas from the calibrated park pose, not absolute angles.
     # Keep 25% exact-neutral samples so the policy also learns to hold HOME.
     head = cfg.commands["head_pose"]
@@ -99,6 +112,21 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
 
     if play:
         cfg.scene.num_envs = min(cfg.scene.num_envs, 16)
+        # Playback should show the policy/home pose under deterministic nominal
+        # conditions. Upstream's play config still contains training pushes and
+        # domain randomization, which makes a zero-agent HOME check misleading.
+        for event_name in (
+            "push_robot",
+            "randomize_com",
+            "randomize_joint_friction",
+            "randomize_armature",
+            "foot_friction",
+            "encoder_bias",
+            "base_com",
+            "randomize_mass_inertia",
+        ):
+            cfg.events.pop(event_name, None)
+        cfg.curriculum = {}
     return cfg
 
 
