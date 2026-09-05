@@ -61,44 +61,85 @@ GRAVITY_MAX_MAGNITUDE = 15.0
 GRAVITY_STALE_LIMIT_S = 0.25
 
 
-class ProjectedGravity:
-    """Unit gravity direction in the body frame, as MJLab defines it.
+# Plausible magnitude band for a fused gravity vector, in m/s^2. The BNO055
+# occasionally hands back a corrupted sample over I2C -- values near zero or in
+# the hundreds -- because its clock stretching does not agree with the Pi's I2C
+# controller. Those are bus errors, not the robot being in freefall or a crash.
+GRAVITY_MIN_MAGNITUDE = 5.0
+GRAVITY_MAX_MAGNITUDE = 15.0
+# The robot cannot physically spin this fast; anything beyond it is corruption.
+GYRO_MAX_MAGNITUDE = 35.0
+# How long a channel may stay unusable before the run stops. A quarter second
+# of held-over data is survivable; a disconnected IMU is not.
+IMU_STALE_LIMIT_S = 0.25
+# Corruption comes in bursts. Reporting every bad sample floods the console --
+# and a blocked stdout stalls the control loop, which is how a robot stops
+# answering its own stop button.
+IMU_REPORT_INTERVAL_S = 2.0
 
-    Holds the last good reading across dropouts. A single bad I2C sample is not
-    a reason to end a walk: raising here dropped a running robot mid-stride,
-    which is exactly the failure mode the controller-freshness handling below
-    was written to avoid. A genuinely dead IMU still stops the run, just after
-    a few samples instead of one.
+
+class ImuFilter:
+    """Plausibility gate over the IMU, holding the last good value per channel.
+
+    Both channels the policy consumes come off the same I2C bus, so a bus glitch
+    corrupts the gyro exactly as often as it corrupts gravity. Checking only one
+    of them fed the other straight into the observation.
+
+    A single bad sample is not a reason to end a walk: raising here dropped a
+    running robot mid-stride. A genuinely dead IMU still stops the run.
     """
 
     def __init__(self, dt: float):
         self.last: np.ndarray | None = None
-        self.bad_samples = 0
-        self.limit = max(1, int(round(GRAVITY_STALE_LIMIT_S / dt)))
-        self.total_dropouts = 0
+        self.last_gyro: np.ndarray | None = None
+        self.bad = {"gravity": 0, "gyro": 0}
+        self.dropouts = {"gravity": 0, "gyro": 0}
+        self.limit = max(1, int(round(IMU_STALE_LIMIT_S / dt)))
+        self.reported = time.monotonic()
 
-    def read(self, imu_data: dict) -> np.ndarray:
-        gravity = np.asarray(imu_data.get("gravity"), dtype=float)
-        usable = gravity.shape == (3,) and np.isfinite(gravity).all()
-        norm = float(np.linalg.norm(gravity)) if usable else 0.0
-        if usable and GRAVITY_MIN_MAGNITUDE <= norm <= GRAVITY_MAX_MAGNITUDE:
-            self.bad_samples = 0
-            # The BNO055 reports gravity with the accelerometer's convention:
-            # at rest the vector points UP, away from gravity. MJLab's
-            # projected_gravity is the direction gravity acts IN, so upright is
-            # [0, 0, -1]. Negate.
-            self.last = -gravity / norm
-            return self.last
-        self.bad_samples += 1
-        self.total_dropouts += 1
-        if self.last is None or self.bad_samples > self.limit:
+    def _channel(self, name: str, value, low: float, high: float,
+                 previous: np.ndarray | None) -> np.ndarray:
+        vector = np.asarray(value, dtype=float)
+        usable = vector.shape == (3,) and np.isfinite(vector).all()
+        norm = float(np.linalg.norm(vector)) if usable else float("nan")
+        if usable and low <= norm <= high:
+            self.bad[name] = 0
+            return vector
+        self.bad[name] += 1
+        self.dropouts[name] += 1
+        if previous is None or self.bad[name] > self.limit:
             raise RuntimeError(
-                f"IMU gravity unusable for {self.bad_samples} samples "
-                f"(magnitude {norm:.2f} m/s^2). Check the BNO055 wiring."
+                f"IMU {name} unusable for {self.bad[name]} samples "
+                f"(magnitude {norm:.2f}). Check the BNO055 wiring and the I2C "
+                f"bus speed."
             )
-        if self.bad_samples == 1:
-            print(f"IMU gravity dropout ({norm:.2f} m/s^2), holding last good value")
-        return self.last
+        return previous
+
+    def read(self, imu_data: dict) -> tuple[np.ndarray, np.ndarray]:
+        """Return (gyro, projected_gravity) with corrupt samples held over."""
+        gyro = self._channel("gyro", imu_data.get("gyro"), 0.0,
+                             GYRO_MAX_MAGNITUDE, self.last_gyro)
+        self.last_gyro = gyro
+        gravity = self._channel("gravity", imu_data.get("gravity"),
+                                GRAVITY_MIN_MAGNITUDE, GRAVITY_MAX_MAGNITUDE,
+                                None if self.last is None else -self.last)
+        # The BNO055 reports gravity with the accelerometer's convention: at
+        # rest the vector points UP, away from gravity. MJLab's
+        # projected_gravity is the direction gravity acts IN, so upright is
+        # [0, 0, -1]. Negate.
+        self.last = -gravity / float(np.linalg.norm(gravity))
+        now = time.monotonic()
+        if (any(self.dropouts.values())
+                and now - self.reported >= IMU_REPORT_INTERVAL_S):
+            print(
+                f"\rIMU dropouts in {IMU_REPORT_INTERVAL_S:.0f} s: "
+                f"gyro {self.dropouts['gyro']}, gravity {self.dropouts['gravity']} "
+                f"(holding last good)      ",
+                flush=True,
+            )
+            self.dropouts = {"gravity": 0, "gyro": 0}
+            self.reported = now
+        return gyro, self.last
 
 
 def _make_controller(control: str, host: str, web_port: int):
@@ -152,7 +193,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             "Run `nubzuki-standing identify-head` on the robot first."
         )
     is_mjlab = _is_mjlab_policy(policy_path)
-    gravity_source = ProjectedGravity(1.0 / calibration.control_frequency_hz)
+    imu_filter = ImuFilter(1.0 / calibration.control_frequency_hz)
     # Per-joint activity, printed every couple of seconds while armed. A limb
     # that the policy is not driving is invisible in an aggregate log but
     # obvious as a near-zero swing here.
@@ -241,7 +282,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                         # the body frame. A remapped or upside-down IMU shows
                         # up here as a tilt the policy would spend the whole
                         # run fighting, so refuse to arm on it.
-                        gravity = gravity_source.read(imu.read())
+                        _, gravity = imu_filter.read(imu.read())
                         if gravity[2] > -0.9:
                             raise RuntimeError(
                                 f"Projected gravity is {np.round(gravity, 3).tolist()}, "
@@ -289,8 +330,9 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             qvel = hardware.read_velocities()
             contacts = feet.read()
             if is_mjlab:
+                gyro, gravity = imu_filter.read(imu_data)
                 observation = builder.build(
-                    imu_data["gyro"], gravity_source.read(imu_data), qpos, qvel,
+                    gyro, gravity, qpos, qvel,
                     np.asarray([forward, 0.0, yaw_rate]),
                     head_pose_command(head_targets, policy),
                 )
@@ -321,8 +363,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             hardware.set_positions(dict(zip(calibration.joint_order, requested)))
             if debug_writer is not None:
                 gravity_row = (
-                    gravity_source.last if gravity_source.last is not None
-                    else np.zeros(3)
+                    imu_filter.last if imu_filter.last is not None else np.zeros(3)
                 )
                 debug_writer.writerow(
                     [time.monotonic() - debug_started, forward, yaw_rate,

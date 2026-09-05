@@ -1,0 +1,109 @@
+{
+  "framework": "mjlab",
+  "deployable": true,
+  "task": "Mjlab-Velocity-Flat-BAM-Nubzuki",
+  "checkpoint": "model_570.pt",
+  "control_frequency_hz": 50,
+  "observation_size": 61,
+  "action_size": 14,
+  "observation": [
+    {
+      "name": "base_ang_vel",
+      "dim": 3
+    },
+    {
+      "name": "projected_gravity",
+      "dim": 3
+    },
+    {
+      "name": "joint_pos",
+      "dim": 14
+    },
+    {
+      "name": "joint_vel",
+      "dim": 14
+    },
+    {
+      "name": "actions",
+      "dim": 14
+    },
+    {
+      "name": "command",
+      "dim": 3
+    },
+    {
+      "name": "head_command",
+      "dim": 4
+    },
+    {
+      "name": "body_command",
+      "dim": 6
+    }
+  ],
+  "joint_order": [
+    "left_hip_yaw",
+    "left_hip_roll",
+    "left_hip_pitch",
+    "left_knee",
+    "left_ankle",
+    "right_hip_yaw",
+    "right_hip_roll",
+    "right_hip_pitch",
+    "right_knee",
+    "right_ankle",
+    "neck_pitch",
+    "head_pitch",
+    "head_yaw",
+    "head_roll"
+  ],
+  "default_joint_pos": [
+    0.0024434609804302454,
+    0.12217304855585098,
+    0.008377579972147942,
+    -0.039269909262657166,
+    -0.05585053563117981,
+    0.004188789986073971,
+    0.12217304855585098,
+    0.011693705804646015,
+    -0.039269909262657166,
+    -0.05585053563117981,
+    -0.20786871016025543,
+    -0.14189526438713074,
+    0.0,
+    0.0
+  ],
+  "action_scale": 0.25,
+  "command_ranges": {
+    "twist_lin_vel_x": [
+      0.04,
+      0.18
+    ],
+    "twist_lin_vel_y": [
+      0.0,
+      0.0
+    ],
+    "twist_ang_vel_z": [
+      -0.7,
+      0.7
+    ],
+    "head_pose": [
+      [
+        -0.03,
+        0.03
+      ],
+      [
+        -0.03,
+        0.03
+      ],
+      [
+        -0.05,
+        0.05
+      ],
+      [
+        -0.01,
+        0.01
+      ]
+    ]
+  },
+  "command_ranges_source": "/Users/sungwon/Desktop/Robot/Robot_Nubzuki/mjlab_nubzuki/checkpoints/params/env.yaml"
+}
