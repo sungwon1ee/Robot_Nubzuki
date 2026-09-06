@@ -42,12 +42,18 @@ class PhoneController:
         self._axes = {name: 0.0 for name in AXES}
         self._a_pressed = False
         self._b_pressed = False
-        # Stop latches. A press arrives in whatever samples land while the
-        # finger is down; if the control loop is running slow -- a servo bus
-        # erroring out turns every read into a serial timeout -- it can poll
-        # either side of that window and miss the press entirely. Stop is the
-        # one signal that must never be missed, so it sticks until read.
+        # Stop latch. A press arrives in whatever samples land while the finger
+        # is down; if the control loop is running slow -- a servo bus erroring
+        # out turns every read into a serial timeout -- it can poll either side
+        # of that window and miss the press entirely. Stop must not be missed,
+        # so it sticks once set.
+        #
+        # It only starts listening after the page has reported the button
+        # released at least once. A page that reloads mid-press, or that misses
+        # a pointerup and leaves its button stuck down, otherwise sends b=true
+        # from the first sample and kills the run before it starts.
         self._stop_latched = False
+        self._stop_armed = False
         self.control_mode = "walk"
         self._last_input = 0.0
         self._connected = False
@@ -106,7 +112,9 @@ class PhoneController:
             self.control_mode = mode if mode in ("walk", "head") else "walk"
             self._a_pressed = bool(payload.get("a", False))
             self._b_pressed = bool(payload.get("b", False))
-            if self._b_pressed:
+            if not self._b_pressed:
+                self._stop_armed = True
+            elif self._stop_armed:
                 self._stop_latched = True
             self._last_input = time.monotonic()
             self._connected = True
@@ -117,7 +125,10 @@ class PhoneController:
                 # Hold no stale deflection: an unreachable phone recentres the head.
                 self._axes = {name: 0.0 for name in AXES}
                 self._a_pressed = False
-            return dict(self._axes), self._a_pressed, self._b_pressed or self._stop_latched
+            # Stop is reported from the latch alone. Reporting the raw button
+            # too would let a page whose button is stuck down -- a reload
+            # mid-press, a missed pointerup -- stop the run on its first sample.
+            return dict(self._axes), self._a_pressed, self._stop_latched
 
     def fresh(self) -> bool:
         """True only while samples are actually arriving."""
