@@ -112,12 +112,28 @@ def main() -> None:
             f"them before deploying."
         )
 
-    # Joint arrays the policy sees are in the model's order, which is NOT the
-    # calibration's. Record it so the runtime can permute rather than assume.
-    joint_order = list(robot.joint_names)
-    default_joint_pos = robot.data.default_joint_pos[0].tolist()
-    if len(joint_order) != len(default_joint_pos):
-        raise SystemExit("joint_names and default_joint_pos disagree")
+    # Only the joints the action term drives belong in the contract. On the
+    # backlash model the entity also carries 14 unactuated passive_*_backlash
+    # hinges, so robot.joint_names is 28 long while the policy's action and
+    # joint observations are 14 -- exporting the full list produced a contract
+    # the hardware rejected as "joint set does not match the calibration".
+    action_ids = list(action_term._target_ids)
+    joint_order = [robot.joint_names[i] for i in action_ids]
+    default_joint_pos = robot.data.default_joint_pos[0, action_ids].tolist()
+
+    # The observation must be built over the same joints in the same order, or
+    # the runtime feeds the policy a permuted vector that still has the right
+    # shape. Compare against the selection the joint_pos term actually uses.
+    obs_term = obs_manager._group_obs_term_cfgs["actor"][names.index("joint_pos")]
+    obs_asset = obs_term.params.get("asset_cfg")
+    if obs_asset is not None and obs_asset.joint_ids not in (slice(None), None):
+        obs_ids = list(obs_asset.joint_ids)
+        if obs_ids != action_ids:
+            raise SystemExit(
+                f"joint_pos observes {[robot.joint_names[i] for i in obs_ids]} "
+                f"but actions drive {joint_order}; the runtime cannot line those "
+                f"up. Fix the task config before deploying."
+            )
 
     # Command ranges decide what a full stick deflection asks for. They must
     # come from the run that trained this checkpoint, not from whatever the
