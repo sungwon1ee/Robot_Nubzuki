@@ -139,6 +139,30 @@ class ImuFilter:
         return counts
 
 
+def _settled_gravity(imu, imu_filter: ImuFilter, dt: float,
+                     timeout_s: float = 1.5) -> np.ndarray:
+    """Wait for one usable IMU sample before arming.
+
+    The filter holds the last good reading across dropouts, but at arm time
+    there is no last good reading yet, so a single corrupt sample -- and on
+    this I2C bus a few percent of them are -- raised and ended the run before
+    it started. Poll until the bus hands over something plausible.
+    """
+    deadline = time.monotonic() + timeout_s
+    last_error: RuntimeError | None = None
+    while time.monotonic() < deadline:
+        try:
+            _, gravity = imu_filter.read(imu.read())
+            return gravity
+        except RuntimeError as error:
+            last_error = error
+            time.sleep(dt)
+    assert last_error is not None
+    raise RuntimeError(
+        f"No usable IMU sample in {timeout_s:.1f} s before arming: {last_error}"
+    )
+
+
 def _make_controller(control: str, host: str, web_port: int):
     if control == "phone":
         from playground.nubzuki.phone_controller import PhoneController
@@ -279,7 +303,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                         # the body frame. A remapped or upside-down IMU shows
                         # up here as a tilt the policy would spend the whole
                         # run fighting, so refuse to arm on it.
-                        _, gravity = imu_filter.read(imu.read())
+                        gravity = _settled_gravity(imu, imu_filter, dt)
                         if gravity[2] > -0.9:
                             raise RuntimeError(
                                 f"Projected gravity is {np.round(gravity, 3).tolist()}, "
