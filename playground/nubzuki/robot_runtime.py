@@ -393,7 +393,18 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 activity_max = np.full(14, -np.inf)
                 activity_last = time.monotonic()
             previous_targets = requested
-            time.sleep(max(0.0, dt - (time.monotonic() - started)))
+            elapsed = time.monotonic() - started
+            if elapsed > 4 * dt:
+                # A loop this slow cannot poll the stop button often enough to
+                # catch a press, and the policy is being fed stale sensor data.
+                # Almost always a servo bus in an error state, where every read
+                # runs to its serial timeout.
+                print(
+                    f"\rControl loop took {elapsed * 1000:.0f} ms "
+                    f"(budget {dt * 1000:.0f} ms) - servo bus is struggling",
+                    flush=True,
+                )
+            time.sleep(max(0.0, dt - elapsed))
     finally:
         try:
             if not servos_energized:
