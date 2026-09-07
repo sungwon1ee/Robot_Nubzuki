@@ -706,6 +706,13 @@ class SafeStopTests(unittest.TestCase):
         self.assertNotIn("set_positions", mjlab)
         self.assertIn("hardware.set_positions", legacy)
 
+    def test_debug_log_captures_policy_inputs_and_outputs(self):
+        source = Path("playground/nubzuki/robot_runtime.py").read_text()
+        self.assertIn('f"{name}_velocity_rad_s"', source)
+        self.assertIn('f"{name}_action"', source)
+        self.assertIn('f"{name}_unclipped_target_rad"', source)
+        self.assertIn("*observation_gyro", source)
+
     def test_park_lands_on_the_calibrated_pose_without_cutting_torque(self):
         hardware = RecordingHardware()
         start = np.zeros(14)

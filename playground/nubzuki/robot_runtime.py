@@ -259,6 +259,9 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
              "gyro_x", "gyro_y", "gyro_z",
              "grav_x", "grav_y", "grav_z",
              "left_contact", "right_contact"]
+            + [f"{name}_velocity_rad_s" for name in calibration.joint_order]
+            + [f"{name}_action" for name in calibration.joint_order]
+            + [f"{name}_unclipped_target_rad" for name in calibration.joint_order]
             + [f"{name}_target_rad" for name in calibration.joint_order]
             + [f"{name}_actual_rad" for name in calibration.joint_order]
         )
@@ -377,6 +380,8 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 # MJLab actions are deltas around the training default pose,
                 # not absolute targets.
                 policy_target = policy.joint_targets(action)
+                action_runtime = np.asarray(action)[policy.to_runtime]
+                observation_gyro = gyro
             else:
                 command = np.asarray(
                     [forward, 0.0, yaw_rate]
@@ -389,6 +394,9 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 action = policy.infer(observation)
                 builder.advance(action)
                 policy_target = action * calibration.action_scale_rad
+                action_runtime = np.asarray(action)
+                observation_gyro = np.asarray(imu_data["gyro"])
+            unclipped_target = np.asarray(policy_target).copy()
             lowers = np.asarray([calibration.limits_rad(name)[0] for name in calibration.joint_order])
             uppers = np.asarray([calibration.limits_rad(name)[1] for name in calibration.joint_order])
             policy_target = np.clip(policy_target, lowers, uppers)
@@ -403,8 +411,9 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 )
                 debug_writer.writerow(
                     [time.monotonic() - debug_started, forward, yaw_rate,
-                     *imu_data["gyro"], *gravity_row, *contacts]
-                    + list(requested) + list(qpos)
+                     *observation_gyro, *gravity_row, *contacts]
+                    + list(qvel) + list(action_runtime)
+                    + list(unclipped_target) + list(requested) + list(qpos)
                 )
                 debug_rows += 1
                 if debug_rows % calibration.control_frequency_hz == 0:
