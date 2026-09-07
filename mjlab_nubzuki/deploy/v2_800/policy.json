@@ -2,7 +2,7 @@
   "framework": "mjlab",
   "deployable": true,
   "task": "Mjlab-Velocity-Flat-Backlash-BAM-Nubzuki",
-  "checkpoint": "model_800.pt",
+  "checkpoint": "model_2300.pt",
   "control_frequency_hz": 50,
   "observation_size": 61,
   "action_size": 14,

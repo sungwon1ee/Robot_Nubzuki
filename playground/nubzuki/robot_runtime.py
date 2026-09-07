@@ -311,10 +311,25 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                                 f"--imu-upside-down and the IMU axis remap before arming."
                             )
                         print(f"IMU check OK: projected gravity {np.round(gravity, 3).tolist()}")
-                    hardware.set_kps([low] * 14)
-                    hardware.set_positions({name: 0.0 for name in calibration.joint_order})
-                    time.sleep(1.0)
-                    hardware.set_kps(runtime_kps)
+                    if is_mjlab:
+                        # MJLab starts from the model's home pose, which the
+                        # calibrated park pose closely matches.  Do not move
+                        # every joint to logical zero here: that used to pull
+                        # the hips, ankles and head away from the training
+                        # pose for a full second immediately before inference,
+                        # making a zero-command policy fight the arm transition.
+                        # Anchor the slew limiter to what the robot is actually
+                        # holding and begin directly from park instead.
+                        previous_targets = hardware.read_positions()
+                    else:
+                        # The legacy absolute-target policy was trained around
+                        # logical zero and retains its original arm transition.
+                        hardware.set_kps([low] * 14)
+                        hardware.set_positions({
+                            name: 0.0 for name in calibration.joint_order
+                        })
+                        time.sleep(1.0)
+                        hardware.set_kps(runtime_kps)
                     armed = True
                     print("Policy armed")
                 a_was_pressed = a_pressed
