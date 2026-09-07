@@ -172,6 +172,29 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     # inside its much smaller mechanical joint ranges.
     cfg.actions["joint_pos"].scale = 0.25
 
+    # The 2 cm MicroDuck swing target is only just enough for its simulated
+    # sole.  On Nubzuki the resulting straight-leg gait cleared the MuJoCo
+    # floor but was swallowed by real gearbox play, sole compliance and floor
+    # friction: a hardware rollout kept both contact switches down for almost
+    # every commanded step.  Give resumed training a real clearance margin and
+    # make losing foot contact worth more than shuffling both feet on the
+    # ground.  These terms are command-gated upstream, so zero-command standing
+    # is not encouraged to march in place.
+    swing_height = 0.035
+    cfg.rewards["air_time"].weight = 4.0
+    cfg.rewards["foot_clearance"].weight = -3.0
+    cfg.rewards["foot_clearance"].params["target_height"] = swing_height
+    cfg.rewards["foot_swing_height"].weight = -1.0
+    cfg.rewards["foot_swing_height"].params["target_height"] = swing_height
+
+    # The physical knee encoder sat roughly 2.5 degrees away from the simulated
+    # reset state under load.  Upstream's +/-0.86 degree encoder bias never
+    # exposed the actor to that observation.  Widen the per-episode constant
+    # bias to +/-2.3 degrees for every joint; this covers the measured knee
+    # mismatch without changing the actor observation or checkpoint shape.
+    if "encoder_bias" in cfg.events:
+        cfg.events["encoder_bias"].params["bias_range"] = (-0.04, 0.04)
+
     # The standard limit reward observes only the resulting joint position.
     # That let the policy command the knees more than 100 degrees through their
     # zero-degree hard stop while MuJoCo quietly held them still.  Price the
