@@ -696,14 +696,14 @@ class SafeStopTests(unittest.TestCase):
         self.assertIn("park(hardware, calibration, previous_targets, dt)", startup)
         self.assertIn("Holding park pose", startup)
 
-    def test_mjlab_arms_directly_from_park(self):
+    def test_mjlab_arms_from_exported_training_home(self):
         source = Path("playground/nubzuki/robot_runtime.py").read_text()
         arm = source.split("if a_pressed and not a_was_pressed:", 1)[1]
         arm = arm.split("armed = True", 1)[0]
-        mjlab = arm.split("if is_mjlab:", 1)[1].split("else:", 1)[0]
+        mjlab = arm.rsplit("if is_mjlab:", 1)[1].split("else:", 1)[0]
         legacy = arm.split("else:", 1)[1]
-        self.assertIn("previous_targets = hardware.read_positions()", mjlab)
-        self.assertNotIn("set_positions", mjlab)
+        self.assertIn("policy.default_joint_pos[policy.to_runtime]", mjlab)
+        self.assertIn("previous_targets = _slew_to_pose", mjlab)
         self.assertIn("hardware.set_positions", legacy)
 
     def test_debug_log_captures_policy_inputs_and_outputs(self):

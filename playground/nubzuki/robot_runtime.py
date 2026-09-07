@@ -174,17 +174,18 @@ def _make_controller(control: str, host: str, web_port: int):
     return XboxController()
 
 
-def park(hardware: ServoHardware, calibration: NubzukiCalibration,
-         from_targets, dt: float) -> None:
-    """Slew onto the calibrated park pose and keep holding it, torque on.
-
-    A standing robot must not go limp: releasing fourteen servos at once is a
-    fall, not a stop. Nothing the running loop can do cuts torque - not a lost
-    controller, not an exception, not the B button. The servos are released
-    only by cutting power, with the robot already supported.
-    """
+def _slew_to_pose(hardware: ServoHardware, calibration: NubzukiCalibration,
+                  from_targets, target, dt: float) -> np.ndarray:
+    """Move safely to one absolute pose and return the pose being held."""
     order = calibration.joint_order
-    target = np.asarray([calibration.park_rad(name) for name in order])
+    target = np.asarray(target, dtype=float)
+    if target.shape != (len(order),) or not np.isfinite(target).all():
+        raise RuntimeError(f"Invalid slew target: {target.shape}")
+    lowers = np.asarray([calibration.limits_rad(name)[0] for name in order])
+    uppers = np.asarray([calibration.limits_rad(name)[1] for name in order])
+    if np.any(target < lowers) or np.any(target > uppers):
+        raise RuntimeError("Slew target is outside the calibrated joint limits")
+
     position = np.asarray(from_targets, dtype=float).copy()
     max_delta = (
         float(calibration.data["runtime"]["max_motor_velocity_rad_s"])
@@ -200,6 +201,20 @@ def park(hardware: ServoHardware, calibration: NubzukiCalibration,
         hardware.set_positions(dict(zip(order, position)))
         time.sleep(dt)
     hardware.set_positions(dict(zip(order, target)))
+    return target.copy()
+
+
+def park(hardware: ServoHardware, calibration: NubzukiCalibration,
+         from_targets, dt: float) -> np.ndarray:
+    """Slew onto the calibrated park pose and keep holding it, torque on.
+
+    A standing robot must not go limp: releasing fourteen servos at once is a
+    fall, not a stop. Nothing the running loop can do cuts torque - not a lost
+    controller, not an exception, not the B button. The servos are released
+    only by cutting power, with the robot already supported.
+    """
+    target = [calibration.park_rad(name) for name in calibration.joint_order]
+    return _slew_to_pose(hardware, calibration, from_targets, target, dt)
 
 
 def run_robot(policy_path: str, port: str, calibration_path: str | None,
@@ -315,15 +330,22 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                             )
                         print(f"IMU check OK: projected gravity {np.round(gravity, 3).tolist()}")
                     if is_mjlab:
-                        # MJLab starts from the model's home pose, which the
-                        # calibrated park pose closely matches.  Do not move
-                        # every joint to logical zero here: that used to pull
-                        # the hips, ankles and head away from the training
-                        # pose for a full second immediately before inference,
-                        # making a zero-command policy fight the arm transition.
-                        # Anchor the slew limiter to what the robot is actually
-                        # holding and begin directly from park instead.
-                        previous_targets = hardware.read_positions()
+                        # Begin at the exact default pose exported from the
+                        # training environment.  It is close to park, but not
+                        # identical: notably both simulated knees reset at
+                        # -2.25 degrees rather than on their 0-degree hard
+                        # stops. Starting hardware at park therefore gave the
+                        # policy an out-of-distribution joint observation on
+                        # its first inference and it drove the knees farther
+                        # into that stop instead of unloading a swing foot.
+                        training_home = policy.default_joint_pos[policy.to_runtime]
+                        previous_targets = _slew_to_pose(
+                            hardware,
+                            calibration,
+                            hardware.read_positions(),
+                            training_home,
+                            dt,
+                        )
                     else:
                         # The legacy absolute-target policy was trained around
                         # logical zero and retains its original arm transition.
