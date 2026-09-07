@@ -126,6 +126,17 @@ def _obs():
     return f"{term.func.__name__}, selection {names}"
 
 
+@check("impossible joint targets carry the saturation penalty")
+def _target_limit_reward():
+    from mjlab.tasks.registry import load_env_cfg
+
+    cfg = load_env_cfg("Mjlab-Velocity-Flat-Backlash-BAM-Nubzuki")
+    reward = cfg.rewards["commanded_joint_limit_violation"]
+    assert reward.weight == -10.0, reward.weight
+    assert reward.params == {"action_name": "joint_pos"}, reward.params
+    return f"weight {reward.weight:g}"
+
+
 print("4. drive mirror")
 
 

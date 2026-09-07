@@ -55,6 +55,15 @@ def test_bam_preserves_nubzuki_collision_masks_and_clean_playback():
     assert "spec.delete(actuator)" in robot
 
 
+def test_bam_penalizes_commanded_targets_beyond_hard_limits():
+    tasks = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/tasks.py").read_text()
+    rewards = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/rewards.py").read_text()
+    assert 'cfg.rewards["commanded_joint_limit_violation"]' in tasks
+    assert "weight=-10.0" in tasks
+    assert "action.raw_action * action.scale + action.offset" in rewards
+    assert "entity.data.joint_pos_limits" in rewards
+
+
 def test_bam_training_starts_with_balance_curriculum():
     tasks = (ROOT / "mjlab_nubzuki/src/mjlab_nubzuki/tasks.py").read_text()
     assert '{"step": 0, "rel_standing_envs": 1.00}' in tasks

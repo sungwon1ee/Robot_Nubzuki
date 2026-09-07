@@ -3,6 +3,7 @@
 from copy import deepcopy
 from dataclasses import dataclass
 
+from mjlab.managers import RewardTermCfg
 from mjlab.tasks.registry import register_mjlab_task
 from mjlab.tasks.velocity.rl import VelocityOnPolicyRunner
 
@@ -33,6 +34,7 @@ from mjlab_microduck.tasks.microduck_velocity_env_cfg import MicroduckRlCfg
 from mjlab_microduck.tasks.backlash import make_backlash_variant
 
 from .drive_mirror import RunMirror
+from .rewards import commanded_joint_limit_violation_l2
 from .robot import (
     NUBZUKI_BAM_DETAILED_BACKLASH_ROBOT_CFG,
     NUBZUKI_BAM_DETAILED_ROBOT_CFG,
@@ -169,6 +171,18 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     # Nubzuki actions are desired joint deltas in radians. Keep exploration
     # inside its much smaller mechanical joint ranges.
     cfg.actions["joint_pos"].scale = 0.25
+
+    # The standard limit reward observes only the resulting joint position.
+    # That let the policy command the knees more than 100 degrees through their
+    # zero-degree hard stop while MuJoCo quietly held them still.  Price the
+    # impossible part of the requested target so resumed training must unlearn
+    # that simulation-only support strategy.  Squared radians with weight -10
+    # is negligible for valid targets and rapidly dominates gross saturation.
+    cfg.rewards["commanded_joint_limit_violation"] = RewardTermCfg(
+        func=commanded_joint_limit_violation_l2,
+        weight=-10.0,
+        params={"action_name": "joint_pos"},
+    )
 
     if play:
         cfg.scene.num_envs = min(cfg.scene.num_envs, 16)
