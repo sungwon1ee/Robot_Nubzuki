@@ -1,0 +1,1097 @@
+{
+  "checkpoint": "model_3950.pt",
+  "steps": 600,
+  "dt": 0.02,
+  "dones": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "scenarios": [
+    {
+      "speed": 0.0,
+      "joints": [
+        {
+          "joint": "left_hip_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -0.4063769280910492,
+            0.8119538426399231
+          ],
+          "encoder_deg": [
+            -0.38943395018577576,
+            0.8663070797920227
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.11803664267063141
+        },
+        {
+          "joint": "left_hip_roll",
+          "limits_deg": [
+            -9.999999046325684,
+            19.999998092651367
+          ],
+          "target_deg": [
+            6.204240322113037,
+            6.805450916290283
+          ],
+          "encoder_deg": [
+            6.383030891418457,
+            6.410967826843262
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.08911095559597015
+        },
+        {
+          "joint": "left_hip_pitch",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            1.489585041999817,
+            2.183300256729126
+          ],
+          "encoder_deg": [
+            2.464172124862671,
+            2.813298225402832
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.7957158088684082
+        },
+        {
+          "joint": "left_knee",
+          "limits_deg": [
+            -45.0,
+            0.0
+          ],
+          "target_deg": [
+            -2.8322198390960693,
+            -1.843018889427185
+          ],
+          "encoder_deg": [
+            -1.55134916305542,
+            -1.410184383392334
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.789692223072052
+        },
+        {
+          "joint": "left_ankle",
+          "limits_deg": [
+            -30.0,
+            30.0
+          ],
+          "target_deg": [
+            -2.5872199535369873,
+            -0.822382926940918
+          ],
+          "encoder_deg": [
+            -1.1804453134536743,
+            -0.6610226035118103
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.786851167678833
+        },
+        {
+          "joint": "right_hip_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            0.041102100163698196,
+            1.042834758758545
+          ],
+          "encoder_deg": [
+            0.045125242322683334,
+            0.8440717458724976
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.11630648374557495
+        },
+        {
+          "joint": "right_hip_roll",
+          "limits_deg": [
+            -9.999999046325684,
+            19.999998092651367
+          ],
+          "target_deg": [
+            7.15691614151001,
+            7.675994873046875
+          ],
+          "encoder_deg": [
+            7.168174743652344,
+            7.938947677612305
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.24825243651866913
+        },
+        {
+          "joint": "right_hip_pitch",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            1.051519513130188,
+            2.0573792457580566
+          ],
+          "encoder_deg": [
+            1.7476551532745361,
+            2.0446717739105225
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.3703291416168213
+        },
+        {
+          "joint": "right_knee",
+          "limits_deg": [
+            -45.0,
+            0.0
+          ],
+          "target_deg": [
+            -1.0304570198059082,
+            0.29754436016082764
+          ],
+          "encoder_deg": [
+            -0.290420800447464,
+            0.2570016384124756
+          ],
+          "target_outside_pct": 10.4,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 53.800000000000004,
+          "mae_deg": 0.2724478244781494
+        },
+        {
+          "joint": "right_ankle",
+          "limits_deg": [
+            -30.0,
+            30.0
+          ],
+          "target_deg": [
+            -2.3524177074432373,
+            -1.0419896841049194
+          ],
+          "encoder_deg": [
+            -1.607942819595337,
+            -1.2952171564102173
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.27659881114959717
+        },
+        {
+          "joint": "neck_pitch",
+          "limits_deg": [
+            -13.589472770690918,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -3.905407190322876,
+            -3.06781268119812
+          ],
+          "encoder_deg": [
+            -3.064913272857666,
+            -2.8221516609191895
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.5166550874710083
+        },
+        {
+          "joint": "head_pitch",
+          "limits_deg": [
+            -9.347368240356445,
+            15.0
+          ],
+          "target_deg": [
+            -6.292381286621094,
+            -5.4744439125061035
+          ],
+          "encoder_deg": [
+            -5.123470306396484,
+            -5.050127029418945
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.822912871837616
+        },
+        {
+          "joint": "head_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -3.7177810668945312,
+            -2.2876667976379395
+          ],
+          "encoder_deg": [
+            -3.3874077796936035,
+            -2.7401363849639893
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.2084384262561798
+        },
+        {
+          "joint": "head_roll",
+          "limits_deg": [
+            -12.0,
+            12.0
+          ],
+          "target_deg": [
+            0.27081432938575745,
+            1.020222783088684
+          ],
+          "encoder_deg": [
+            0.2968791723251343,
+            0.7120732069015503
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.13240334391593933
+        }
+      ]
+    },
+    {
+      "speed": 0.1,
+      "joints": [
+        {
+          "joint": "left_hip_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -6.958861351013184,
+            3.199843406677246
+          ],
+          "encoder_deg": [
+            -6.989806175231934,
+            3.4583263397216797
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.0693856477737427
+        },
+        {
+          "joint": "left_hip_roll",
+          "limits_deg": [
+            -9.999999046325684,
+            19.999998092651367
+          ],
+          "target_deg": [
+            2.6829042434692383,
+            9.940523147583008
+          ],
+          "encoder_deg": [
+            1.0331659317016602,
+            11.501254081726074
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.7620126008987427
+        },
+        {
+          "joint": "left_hip_pitch",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -3.1438376903533936,
+            21.274288177490234
+          ],
+          "encoder_deg": [
+            -2.388134241104126,
+            20.30338478088379
+          ],
+          "target_outside_pct": 2.8000000000000003,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 11.200000000000001,
+          "mae_deg": 3.250617504119873
+        },
+        {
+          "joint": "left_knee",
+          "limits_deg": [
+            -45.0,
+            0.0
+          ],
+          "target_deg": [
+            -16.559368133544922,
+            -2.8461930751800537
+          ],
+          "encoder_deg": [
+            -17.056407928466797,
+            -1.1610275506973267
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.9228193759918213
+        },
+        {
+          "joint": "left_ankle",
+          "limits_deg": [
+            -30.0,
+            30.0
+          ],
+          "target_deg": [
+            -7.482487201690674,
+            13.076216697692871
+          ],
+          "encoder_deg": [
+            -6.973370552062988,
+            12.147324562072754
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.78693687915802
+        },
+        {
+          "joint": "right_hip_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -3.3368265628814697,
+            5.078620910644531
+          ],
+          "encoder_deg": [
+            -4.113305568695068,
+            4.664205551147461
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.7440763115882874
+        },
+        {
+          "joint": "right_hip_roll",
+          "limits_deg": [
+            -9.999999046325684,
+            19.999998092651367
+          ],
+          "target_deg": [
+            3.317115306854248,
+            9.335439682006836
+          ],
+          "encoder_deg": [
+            1.6088414192199707,
+            10.936934471130371
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.7503281831741333
+        },
+        {
+          "joint": "right_hip_pitch",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -3.6600308418273926,
+            21.554269790649414
+          ],
+          "encoder_deg": [
+            -2.938697576522827,
+            21.175275802612305
+          ],
+          "target_outside_pct": 4.6,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 12.4,
+          "mae_deg": 3.2407007217407227
+        },
+        {
+          "joint": "right_knee",
+          "limits_deg": [
+            -45.0,
+            0.0
+          ],
+          "target_deg": [
+            -17.81572151184082,
+            -0.02073069103062153
+          ],
+          "encoder_deg": [
+            -18.13240623474121,
+            0.7333522439002991
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 2.4,
+          "mae_deg": 1.8515145778656006
+        },
+        {
+          "joint": "right_ankle",
+          "limits_deg": [
+            -30.0,
+            30.0
+          ],
+          "target_deg": [
+            -8.453847885131836,
+            13.534650802612305
+          ],
+          "encoder_deg": [
+            -8.493525505065918,
+            12.484207153320312
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.9920741319656372
+        },
+        {
+          "joint": "neck_pitch",
+          "limits_deg": [
+            -13.589472770690918,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -7.843751430511475,
+            -2.9842512607574463
+          ],
+          "encoder_deg": [
+            -5.740598678588867,
+            -2.8210489749908447
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.8122542500495911
+        },
+        {
+          "joint": "head_pitch",
+          "limits_deg": [
+            -9.347368240356445,
+            15.0
+          ],
+          "target_deg": [
+            -7.665964126586914,
+            -2.6775801181793213
+          ],
+          "encoder_deg": [
+            -6.216089248657227,
+            -2.929431200027466
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.9586302042007446
+        },
+        {
+          "joint": "head_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -1.2523725032806396,
+            5.467441082000732
+          ],
+          "encoder_deg": [
+            -1.4937618970870972,
+            6.163773536682129
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.8848291039466858
+        },
+        {
+          "joint": "head_roll",
+          "limits_deg": [
+            -12.0,
+            12.0
+          ],
+          "target_deg": [
+            -3.061408042907715,
+            5.443783283233643
+          ],
+          "encoder_deg": [
+            -2.7931954860687256,
+            5.211004734039307
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.2998664379119873
+        }
+      ]
+    },
+    {
+      "speed": 0.2,
+      "joints": [
+        {
+          "joint": "left_hip_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -6.185037136077881,
+            2.4929442405700684
+          ],
+          "encoder_deg": [
+            -5.888616561889648,
+            2.3448548316955566
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.0203940868377686
+        },
+        {
+          "joint": "left_hip_roll",
+          "limits_deg": [
+            -9.999999046325684,
+            19.999998092651367
+          ],
+          "target_deg": [
+            2.134925365447998,
+            11.724504470825195
+          ],
+          "encoder_deg": [
+            0.9461508393287659,
+            13.058449745178223
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 2.4952645301818848
+        },
+        {
+          "joint": "left_hip_pitch",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -7.949873447418213,
+            20.620561599731445
+          ],
+          "encoder_deg": [
+            -9.093746185302734,
+            21.208662033081055
+          ],
+          "target_outside_pct": 2.1999999999999997,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 11.4,
+          "mae_deg": 4.596738338470459
+        },
+        {
+          "joint": "left_knee",
+          "limits_deg": [
+            -45.0,
+            0.0
+          ],
+          "target_deg": [
+            -17.08379364013672,
+            -2.0539209842681885
+          ],
+          "encoder_deg": [
+            -17.94025421142578,
+            -0.796782374382019
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 2.3622608184814453
+        },
+        {
+          "joint": "left_ankle",
+          "limits_deg": [
+            -30.0,
+            30.0
+          ],
+          "target_deg": [
+            -10.082730293273926,
+            19.527299880981445
+          ],
+          "encoder_deg": [
+            -9.634315490722656,
+            19.148147583007812
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 3.0909759998321533
+        },
+        {
+          "joint": "right_hip_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -1.6965746879577637,
+            4.3430328369140625
+          ],
+          "encoder_deg": [
+            -2.2404885292053223,
+            3.9035613536834717
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.8951112627983093
+        },
+        {
+          "joint": "right_hip_roll",
+          "limits_deg": [
+            -9.999999046325684,
+            19.999998092651367
+          ],
+          "target_deg": [
+            2.7386507987976074,
+            10.587788581848145
+          ],
+          "encoder_deg": [
+            1.279936671257019,
+            12.052947044372559
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 2.406888484954834
+        },
+        {
+          "joint": "right_hip_pitch",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -10.509305000305176,
+            23.028745651245117
+          ],
+          "encoder_deg": [
+            -12.028594970703125,
+            21.479339599609375
+          ],
+          "target_outside_pct": 9.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 13.200000000000001,
+          "mae_deg": 5.134951114654541
+        },
+        {
+          "joint": "right_knee",
+          "limits_deg": [
+            -45.0,
+            0.0
+          ],
+          "target_deg": [
+            -18.409099578857422,
+            -0.6096692681312561
+          ],
+          "encoder_deg": [
+            -18.59657859802246,
+            -0.27473750710487366
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 2.1665852069854736
+        },
+        {
+          "joint": "right_ankle",
+          "limits_deg": [
+            -30.0,
+            30.0
+          ],
+          "target_deg": [
+            -10.668599128723145,
+            20.259057998657227
+          ],
+          "encoder_deg": [
+            -10.726463317871094,
+            18.627656936645508
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 3.2290048599243164
+        },
+        {
+          "joint": "neck_pitch",
+          "limits_deg": [
+            -13.589472770690918,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -7.16414213180542,
+            -2.841742753982544
+          ],
+          "encoder_deg": [
+            -5.277103424072266,
+            -2.9163246154785156
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 0.8692061901092529
+        },
+        {
+          "joint": "head_pitch",
+          "limits_deg": [
+            -9.347368240356445,
+            15.0
+          ],
+          "target_deg": [
+            -6.143272876739502,
+            -2.128343105316162
+          ],
+          "encoder_deg": [
+            -4.368277549743652,
+            -1.9846466779708862
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.0567342042922974
+        },
+        {
+          "joint": "head_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -2.6749026775360107,
+            6.63679838180542
+          ],
+          "encoder_deg": [
+            -2.9344475269317627,
+            7.790218830108643
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.559898853302002
+        },
+        {
+          "joint": "head_roll",
+          "limits_deg": [
+            -12.0,
+            12.0
+          ],
+          "target_deg": [
+            -2.9204578399658203,
+            4.52457857131958
+          ],
+          "encoder_deg": [
+            -2.6246678829193115,
+            4.423018932342529
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.305301308631897
+        }
+      ]
+    },
+    {
+      "speed": 0.25,
+      "joints": [
+        {
+          "joint": "left_hip_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -5.8056440353393555,
+            3.4822609424591064
+          ],
+          "encoder_deg": [
+            -5.4994354248046875,
+            2.8455803394317627
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.111657738685608
+        },
+        {
+          "joint": "left_hip_roll",
+          "limits_deg": [
+            -9.999999046325684,
+            19.999998092651367
+          ],
+          "target_deg": [
+            1.9183686971664429,
+            11.91158676147461
+          ],
+          "encoder_deg": [
+            0.0040039848536252975,
+            13.737783432006836
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 2.6483232975006104
+        },
+        {
+          "joint": "left_hip_pitch",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -10.754415512084961,
+            20.96245002746582
+          ],
+          "encoder_deg": [
+            -13.053762435913086,
+            21.6982364654541
+          ],
+          "target_outside_pct": 3.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 11.0,
+          "mae_deg": 4.970294952392578
+        },
+        {
+          "joint": "left_knee",
+          "limits_deg": [
+            -45.0,
+            0.0
+          ],
+          "target_deg": [
+            -17.54961395263672,
+            -2.159127712249756
+          ],
+          "encoder_deg": [
+            -17.90071678161621,
+            -0.8862159252166748
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 2.4551186561584473
+        },
+        {
+          "joint": "left_ankle",
+          "limits_deg": [
+            -30.0,
+            30.0
+          ],
+          "target_deg": [
+            -11.629518508911133,
+            22.446537017822266
+          ],
+          "encoder_deg": [
+            -11.050065994262695,
+            21.598251342773438
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 3.6615190505981445
+        },
+        {
+          "joint": "right_hip_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -3.272883892059326,
+            4.439212322235107
+          ],
+          "encoder_deg": [
+            -3.3845081329345703,
+            4.103709697723389
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.0883277654647827
+        },
+        {
+          "joint": "right_hip_roll",
+          "limits_deg": [
+            -9.999999046325684,
+            19.999998092651367
+          ],
+          "target_deg": [
+            2.0142111778259277,
+            10.806188583374023
+          ],
+          "encoder_deg": [
+            0.3838166892528534,
+            12.67123794555664
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 2.533407211303711
+        },
+        {
+          "joint": "right_hip_pitch",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -12.555990219116211,
+            23.618322372436523
+          ],
+          "encoder_deg": [
+            -14.405136108398438,
+            21.77593994140625
+          ],
+          "target_outside_pct": 11.799999999999999,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 16.2,
+          "mae_deg": 5.383790493011475
+        },
+        {
+          "joint": "right_knee",
+          "limits_deg": [
+            -45.0,
+            0.0
+          ],
+          "target_deg": [
+            -18.799549102783203,
+            -0.023048898205161095
+          ],
+          "encoder_deg": [
+            -18.919355392456055,
+            0.1379787176847458
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.6,
+          "mae_deg": 2.517144203186035
+        },
+        {
+          "joint": "right_ankle",
+          "limits_deg": [
+            -30.0,
+            30.0
+          ],
+          "target_deg": [
+            -11.925808906555176,
+            20.910369873046875
+          ],
+          "encoder_deg": [
+            -11.890542984008789,
+            20.76392936706543
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 3.823514938354492
+        },
+        {
+          "joint": "neck_pitch",
+          "limits_deg": [
+            -13.589472770690918,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -7.91486120223999,
+            -2.6139960289001465
+          ],
+          "encoder_deg": [
+            -5.63874626159668,
+            -2.78025221824646
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.0283783674240112
+        },
+        {
+          "joint": "head_pitch",
+          "limits_deg": [
+            -9.347368240356445,
+            15.0
+          ],
+          "target_deg": [
+            -5.329434394836426,
+            -1.0668011903762817
+          ],
+          "encoder_deg": [
+            -3.5775516033172607,
+            -0.999218761920929
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.1514705419540405
+        },
+        {
+          "joint": "head_yaw",
+          "limits_deg": [
+            -19.999998092651367,
+            19.999998092651367
+          ],
+          "target_deg": [
+            -3.9725654125213623,
+            6.197227954864502
+          ],
+          "encoder_deg": [
+            -4.393891334533691,
+            7.648318290710449
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.776789665222168
+        },
+        {
+          "joint": "head_roll",
+          "limits_deg": [
+            -12.0,
+            12.0
+          ],
+          "target_deg": [
+            -4.177244663238525,
+            4.787863254547119
+          ],
+          "encoder_deg": [
+            -2.782219886779785,
+            4.54447603225708
+          ],
+          "target_outside_pct": 0.0,
+          "position_outside_1deg_pct": 0.0,
+          "upper_near_1deg_pct": 0.0,
+          "mae_deg": 1.323391079902649
+        }
+      ]
+    }
+  ]
+}

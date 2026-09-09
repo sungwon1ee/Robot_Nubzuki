@@ -1,0 +1,243 @@
+/Users/sungwon/Desktop/Robot/Robot_Nubzuki/mjlab_nubzuki/.venv/lib/python3.12/site-packages/mjlab/scene/scene.py:65: UserWarning: Entity 'robot' has 2 keyframes; only the first one will be used.
+  self._add_entities()
+/Users/sungwon/Desktop/Robot/Robot_Nubzuki/mjlab_nubzuki/.venv/lib/python3.12/site-packages/mjlab/scene/scene.py:65: UserWarning: Entity 'robot' has non-default <option> fields (disableflags, iterations, ls_iterations, sdf_iterations) that will not be propagated by MjSpec.attach(). Use MujocoCfg instead.
+  self._add_entities()
+WARNING: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+/Users/sungwon/Desktop/Robot/Robot_Nubzuki/mjlab_nubzuki/.venv/lib/python3.12/site-packages/mjlab/scene/scene.py:71: UserWarning: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+  return self._spec.compile()
+[WARN] Failed to load task package mjlab_microduck: FrictionDRBamActuatorCfg.__init__() got an unexpected keyword argument 'vin_drop_gain_range'
+[mdp] Patches 1-2 active: NaN-safe reward/advantage
+[mdp] Patch 4 active: ONNX export filters passive_* joints
+Setting seed: 42
+Warp 1.12.0 initialized:
+   CUDA not enabled in this build
+   Devices:
+     "cpu"      : "arm"
+   Kernel cache:
+     /Users/sungwon/Library/Caches/warp/1.12.0
+[BamActuator] model='m6' joints=10 kt=1.2753 R=2.7534 vin=range=(7.0, 8.2) drop_resistance_range=(0.0, 0.2) force_limit=±3.80Nm friction_base=0.0533 friction_viscous=0.0282 envs=4 device=cpu
+[BacklashEncoderBamActuator] encoder-through-backlash feedback on 10/10 joints
+[BamActuator] model='m6' joints=4 kt=1.2753 R=2.7534 vin=range=(7.0, 8.2) drop_resistance_range=(0.0, 0.2) force_limit=±3.80Nm friction_base=0.0533 friction_viscous=0.0282 envs=4 device=cpu
+[BacklashEncoderBamActuator] encoder-through-backlash feedback on 4/4 joints
+Module mujoco_warp._src.render_util 3cd330a load on device 'cpu' took 1.04 ms  (cached)
+Module mujoco_warp._src.bvh e843d00 load on device 'cpu' took 0.88 ms  (cached)
+
++--------------------------------+
+|        Base Environment        |
++------------------------+-------+
+| Property               | Value |
++------------------------+-------+
+| Number of environments | 4     |
+| Environment device     | cpu   |
+| Environment seed       | 42    |
+| Physics step-size      | 0.005 |
+| Environment step-size  | 0.02  |
++------------------------+-------+
+
+[INFO] <EventManager> contains 2 active terms.
++-------------------------------------+
+| Active Event Terms in Mode: 'reset' |
++--------+----------------------------+
+| Index  | Name                       |
++--------+----------------------------+
+|   0    | reset_base                 |
+|   1    | reset_robot_joints         |
+|   2    | reset_action_history       |
++--------+----------------------------+
++---------------------------------------+
+| Active Event Terms in Mode: 'startup' |
++-------+-------------------------------+
+| Index | Name                          |
++-------+-------------------------------+
+|   0   | expand_bam_friction_fields    |
++-------+-------------------------------+
++-----------------------------+
+| Domain Randomization Fields |
++-------+---------------------+
+| Index | Field Name          |
++-------+---------------------+
+|   0   | dof_frictionloss    |
+|   1   | dof_damping         |
++-------+---------------------+
+
+Module repeat_array_kernel_39317a34 64511f0 load on device 'cpu' took 0.65 ms  (cached)
+[INFO] <CommandManager> contains 3 active terms.
++------------------------------------------------+
+|              Active Command Terms              |
++-------+-----------+----------------------------+
+| Index | Name      |            Type            |
++-------+-----------+----------------------------+
+|   0   | twist     | VelocityCommandCommandOnly |
+|   1   | head_pose |     UniformPoseCommand     |
+|   2   | body_pose |     UniformPoseCommand     |
++-------+-----------+----------------------------+
+
+[INFO] <ActionManager> contains 1 active terms.
++---------------------------------+
+| Active Action Terms (shape: 14) |
++-------+-----------+-------------+
+| Index | Name      |   Dimension |
++-------+-----------+-------------+
+|   0   | joint_pos |          14 |
++-------+-----------+-------------+
+
+[INFO] <ObservationManager> contains 2 groups.
++-----------------------------------------------------------+
+| Active Observation Terms in Group: 'actor' (shape: (61,)) |
++-----------+----------------------------------+------------+
+|   Index   | Name                             |   Shape    |
++-----------+----------------------------------+------------+
+|     0     | base_ang_vel                     |    (3,)    |
+|     1     | projected_gravity                |    (3,)    |
+|     2     | joint_pos                        |   (14,)    |
+|     3     | joint_vel                        |   (14,)    |
+|     4     | actions                          |   (14,)    |
+|     5     | command                          |    (3,)    |
+|     6     | head_command                     |    (4,)    |
+|     7     | body_command                     |    (6,)    |
++-----------+----------------------------------+------------+
++------------------------------------------------------------+
+| Active Observation Terms in Group: 'critic' (shape: (76,)) |
++----------+------------------------------------+------------+
+|  Index   | Name                               |   Shape    |
++----------+------------------------------------+------------+
+|    0     | base_lin_vel                       |    (3,)    |
+|    1     | base_ang_vel                       |    (3,)    |
+|    2     | projected_gravity                  |    (3,)    |
+|    3     | joint_pos                          |   (14,)    |
+|    4     | joint_vel                          |   (14,)    |
+|    5     | actions                            |   (14,)    |
+|    6     | command                            |    (3,)    |
+|    7     | foot_height                        |    (2,)    |
+|    8     | foot_air_time                      |    (2,)    |
+|    9     | foot_contact                       |    (2,)    |
+|    10    | foot_contact_forces                |    (6,)    |
+|    11    | head_command                       |    (4,)    |
+|    12    | body_command                       |    (6,)    |
++----------+------------------------------------+------------+
+
+[INFO] <TerminationManager> contains 4 active terms.
++------------------------------------------+
+|         Active Termination Terms         |
++-------+-----------------------+----------+
+| Index | Name                  | Time Out |
++-------+-----------------------+----------+
+|   0   | time_out              |   True   |
+|   1   | fell_over             |  False   |
+|   2   | out_of_terrain_bounds |   True   |
+|   3   | nan_state             |  False   |
++-------+-----------------------+----------+
+
+[INFO] <RewardManager> contains 17 active terms.
++--------------------------------------------------+
+|               Active Reward Terms                |
++-------+---------------------------------+--------+
+| Index | Name                            | Weight |
++-------+---------------------------------+--------+
+|   0   | track_linear_velocity           |    2.0 |
+|   1   | track_angular_velocity          |    2.0 |
+|   2   | upright                         |    2.0 |
+|   3   | pose                            |    1.0 |
+|   4   | body_ang_vel                    |  -0.05 |
+|   5   | dof_pos_limits                  |   -1.0 |
+|   6   | action_rate_l2                  |   -0.1 |
+|   7   | air_time                        |    3.0 |
+|   8   | foot_clearance                  |   -2.0 |
+|   9   | foot_swing_height               |  -0.25 |
+|   10  | foot_slip                       |   -0.1 |
+|   11  | self_collisions                 |   -1.0 |
+|   12  | head_pose_tracking              |    2.0 |
+|   13  | body_pose_tracking              |    0.0 |
+|   14  | head_pose_bias                  |    0.0 |
+|   15  | commanded_joint_limit_violation |  -10.0 |
+|   16  | moving_knee_upper_margin        |  -10.0 |
++-------+---------------------------------+--------+
+
+[INFO] <NullCurriculumManager> (inactive)
+[INFO] <MetricsManager> contains 1 active terms.
++-------------------------+
+|   Active Metrics Terms  |
++-------+-----------------+
+| Index | Name            |
++-------+-----------------+
+|   0   | mean_action_acc |
++-------+-----------------+
+
+[INFO] <NullRecorderManager> (inactive)
+Module reset_data__locals__reset_xfrc_applied_e7898c5c 1f5e12c load on device 'cpu' took 0.77 ms  (cached)
+Module reset_data__locals__reset_qM_10d3c793 f59ca3c load on device 'cpu' took 0.49 ms  (cached)
+Module reset_data__locals__reset_mocap_ff71f630 d0e4e7e load on device 'cpu' took 0.38 ms  (cached)
+Module reset_data__locals__reset_contact_df686d47 3af0a2f load on device 'cpu' took 0.52 ms  (cached)
+Module reset_data__locals__reset_nworld_6e0d904e aef9a67 load on device 'cpu' took 0.44 ms  (cached)
+Module mujoco_warp._src.smooth 8731313 load on device 'cpu' took 0.81 ms  (cached)
+Module mujoco_warp._src.collision_driver eed4cf3 load on device 'cpu' took 0.40 ms  (cached)
+Module _nxn_broadphase__locals__kernel_e73b1315 157cf89 load on device 'cpu' took 0.65 ms  (cached)
+Module ccd_kernel_builder__locals__ccd_kernel_c9a289e6 5f9ef4f load on device 'cpu' took 0.90 ms  (cached)
+Module _primitive_narrowphase__locals__primitive_narrowphase_72f67447 3f80acc load on device 'cpu' took 3.36 ms  (cached)
+Module mujoco_warp._src.collision_sdf 36c586b load on device 'cpu' took 0.94 ms  (cached)
+Module mujoco_warp._src.constraint 02b3f03 load on device 'cpu' took 0.89 ms  (cached)
+Module _efc_contact_init__locals__kernel_346f6f0c 35ddffe load on device 'cpu' took 0.93 ms  (cached)
+Module _efc_contact_jac_sparse__locals__kernel_86e47ecb 8f91a00 load on device 'cpu' took 0.83 ms  (cached)
+Module _efc_contact_update__locals__kernel_90315d53 49b5115 load on device 'cpu' took 0.66 ms  (cached)
+Module mujoco_warp._src.sensor 93435cc load on device 'cpu' took 0.81 ms  (cached)
+Module mujoco_warp._src.forward 5841b67 load on device 'cpu' took 0.84 ms  (cached)
+Module mujoco_warp._src.passive 12b3435 load on device 'cpu' took 0.66 ms  (cached)
+Module mujoco_warp._src.support fda47c6 load on device 'cpu' took 0.46 ms  (cached)
+Module _solve_LD_sparse_fused__locals__kernel_55de0719 a9973d6 load on device 'cpu' took 0.78 ms  (cached)
+Module mujoco_warp._src.solver 2f1f5c6 load on device 'cpu' took 0.76 ms  (cached)
+Module solve_init_jaref__locals__kernel_63515ecb 4d85a14 load on device 'cpu' took 0.78 ms  (cached)
+Module mul_m_sparse__locals___mul_m_sparse_0e88d329 43cf822 load on device 'cpu' took 0.59 ms  (cached)
+Module update_constraint_efc__locals__kernel_32935e9d 7127a83 load on device 'cpu' took 0.47 ms  (cached)
+Module update_constraint_gauss_cost__locals__kernel_66f8146b e986f98 load on device 'cpu' took 0.52 ms  (cached)
+Module update_gradient_cholesky_blocked__locals__kernel_3f89bed4 0aef8fe load on device 'cpu' took 0.77 ms  (cached)
+Module linesearch_jv_fused__locals__kernel_7b416447 e07f2a6 load on device 'cpu' took 0.51 ms  (cached)
+Module linesearch_prepare_gauss__locals__kernel_f5448712 532e099 load on device 'cpu' took 0.36 ms  (cached)
+Module update_constraint_efc__locals__kernel_3c1a9816 0242ddf load on device 'cpu' took 0.50 ms  (cached)
+Module update_gradient_cholesky_blocked_skip_unchanged__locals__kernel_b35f4e9a 1ee56aa load on device 'cpu' took 1.08 ms  (cached)
+Module _contact_sort__locals__contact_sort_53bebbc3 a9b513a load on device 'cpu' took 0.44 ms  (cached)
+Module mujoco_warp._src.ray abbcfd9 load on device 'cpu' took 0.62 ms  (cached)
+--------------------------------------------------------------------------------
+Resolved observation sets: 
+	 actor :  ('actor',)
+	 critic :  ('critic',)
+--------------------------------------------------------------------------------
+Actor Model: MLPModel(
+  (obs_normalizer): EmpiricalNormalization()
+  (distribution): GaussianDistribution()
+  (mlp): MLP(
+    (0): Linear(in_features=61, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=14, bias=True)
+  )
+)
+Critic Model: MLPModel(
+  (obs_normalizer): EmpiricalNormalization()
+  (mlp): MLP(
+    (0): Linear(in_features=76, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+Module mujoco_warp._src.derivative ec4a81b load on device 'cpu' took 0.74 ms  (cached)
+PROGRESS 0
+PROGRESS 100
+PROGRESS 200
+PROGRESS 300
+PROGRESS 400
+PROGRESS 500
+DONE [0 0 0 0]
