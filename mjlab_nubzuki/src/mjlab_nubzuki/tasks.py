@@ -3,7 +3,7 @@
 from copy import deepcopy
 from dataclasses import dataclass
 
-from mjlab.managers import RewardTermCfg
+from mjlab.managers import RewardTermCfg, SceneEntityCfg
 from mjlab.tasks.registry import register_mjlab_task
 from mjlab.tasks.velocity.rl import VelocityOnPolicyRunner
 
@@ -34,7 +34,10 @@ from mjlab_microduck.tasks.microduck_velocity_env_cfg import MicroduckRlCfg
 from mjlab_microduck.tasks.backlash import make_backlash_variant
 
 from .drive_mirror import RunMirror
-from .rewards import commanded_joint_limit_violation_l2
+from .rewards import (
+    commanded_joint_limit_violation_l2,
+    moving_knee_upper_margin_l2,
+)
 from .robot import (
     NUBZUKI_BAM_DETAILED_BACKLASH_ROBOT_CFG,
     NUBZUKI_BAM_DETAILED_ROBOT_CFG,
@@ -172,29 +175,6 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
     # inside its much smaller mechanical joint ranges.
     cfg.actions["joint_pos"].scale = 0.25
 
-    # The 2 cm MicroDuck swing target is only just enough for its simulated
-    # sole.  On Nubzuki the resulting straight-leg gait cleared the MuJoCo
-    # floor but was swallowed by real gearbox play, sole compliance and floor
-    # friction: a hardware rollout kept both contact switches down for almost
-    # every commanded step.  Give resumed training a real clearance margin and
-    # make losing foot contact worth more than shuffling both feet on the
-    # ground.  These terms are command-gated upstream, so zero-command standing
-    # is not encouraged to march in place.
-    swing_height = 0.035
-    cfg.rewards["air_time"].weight = 4.0
-    cfg.rewards["foot_clearance"].weight = -3.0
-    cfg.rewards["foot_clearance"].params["target_height"] = swing_height
-    cfg.rewards["foot_swing_height"].weight = -1.0
-    cfg.rewards["foot_swing_height"].params["target_height"] = swing_height
-
-    # The physical knee encoder sat roughly 2.5 degrees away from the simulated
-    # reset state under load.  Upstream's +/-0.86 degree encoder bias never
-    # exposed the actor to that observation.  Widen the per-episode constant
-    # bias to +/-2.3 degrees for every joint; this covers the measured knee
-    # mismatch without changing the actor observation or checkpoint shape.
-    if "encoder_bias" in cfg.events:
-        cfg.events["encoder_bias"].params["bias_range"] = (-0.04, 0.04)
-
     # The standard limit reward observes only the resulting joint position.
     # That let the policy command the knees more than 100 degrees through their
     # zero-degree hard stop while MuJoCo quietly held them still.  Price the
@@ -205,6 +185,25 @@ def make_nubzuki_bam_env_cfg(play: bool = False):
         func=commanded_joint_limit_violation_l2,
         weight=-10.0,
         params={"action_name": "joint_pos"},
+    )
+
+    # Hardware showed that the actor still spent 88% / 40% of a commanded
+    # walking rollout pushing the left/right knee targets into their 0-degree
+    # upper stops.  Price the near-limit strategy itself: keep 3 degrees of
+    # bend on a loaded leg and 10 degrees on an airborne leg.  Unlike a global
+    # knee-pose reward, this is command-gated and does nothing while standing.
+    cfg.rewards["moving_knee_upper_margin"] = RewardTermCfg(
+        func=moving_knee_upper_margin_l2,
+        weight=-10.0,
+        params={
+            "sensor_name": "feet_ground_contact",
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=("left_knee", "right_knee")
+            ),
+            "action_name": "joint_pos",
+            "command_name": "twist",
+            "command_threshold": 0.01,
+        },
     )
 
     if play:
