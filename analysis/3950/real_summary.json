@@ -1,0 +1,1018 @@
+{
+  "standing": [
+    {
+      "joint": "left_hip_yaw",
+      "raw": [
+        -8.76,
+        11.23
+      ],
+      "sent": [
+        -8.76,
+        4.06
+      ],
+      "actual": [
+        -9.48,
+        0.98
+      ],
+      "MAE": 0.61,
+      "limit_pct": 0.0,
+      "slew_pct": 0.11
+    },
+    {
+      "joint": "left_hip_roll",
+      "raw": [
+        -32.66,
+        10.52
+      ],
+      "sent": [
+        -7.67,
+        10.52
+      ],
+      "actual": [
+        -5.86,
+        9.96
+      ],
+      "MAE": 0.7,
+      "limit_pct": 0.06,
+      "slew_pct": 0.11
+    },
+    {
+      "joint": "left_hip_pitch",
+      "raw": [
+        -11.81,
+        14.35
+      ],
+      "sent": [
+        -11.81,
+        14.35
+      ],
+      "actual": [
+        -9.89,
+        13.31
+      ],
+      "MAE": 1.49,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_knee",
+      "raw": [
+        -14.44,
+        16.18
+      ],
+      "sent": [
+        -14.44,
+        0.0
+      ],
+      "actual": [
+        -15.47,
+        -0.09
+      ],
+      "MAE": 0.81,
+      "limit_pct": 0.11,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_ankle",
+      "raw": [
+        -8.19,
+        14.68
+      ],
+      "sent": [
+        -8.19,
+        14.68
+      ],
+      "actual": [
+        -4.66,
+        17.31
+      ],
+      "MAE": 2.02,
+      "limit_pct": 0.0,
+      "slew_pct": 0.06
+    },
+    {
+      "joint": "neck_pitch",
+      "raw": [
+        -37.18,
+        7.4
+      ],
+      "sent": [
+        -16.3,
+        7.4
+      ],
+      "actual": [
+        -13.8,
+        8.44
+      ],
+      "MAE": 2.33,
+      "limit_pct": 0.06,
+      "slew_pct": 0.11
+    },
+    {
+      "joint": "head_pitch",
+      "raw": [
+        -78.17,
+        1.87
+      ],
+      "sent": [
+        -20.0,
+        1.87
+      ],
+      "actual": [
+        -8.7,
+        2.37
+      ],
+      "MAE": 1.95,
+      "limit_pct": 0.17,
+      "slew_pct": 0.23
+    },
+    {
+      "joint": "head_yaw",
+      "raw": [
+        -35.32,
+        3.78
+      ],
+      "sent": [
+        -17.54,
+        3.78
+      ],
+      "actual": [
+        -16.57,
+        2.42
+      ],
+      "MAE": 0.84,
+      "limit_pct": 0.06,
+      "slew_pct": 0.06
+    },
+    {
+      "joint": "head_roll",
+      "raw": [
+        -4.17,
+        15.42
+      ],
+      "sent": [
+        -4.17,
+        12.0
+      ],
+      "actual": [
+        -3.21,
+        9.27
+      ],
+      "MAE": 0.68,
+      "limit_pct": 0.79,
+      "slew_pct": 0.06
+    },
+    {
+      "joint": "right_hip_yaw",
+      "raw": [
+        -28.7,
+        5.22
+      ],
+      "sent": [
+        -16.6,
+        5.22
+      ],
+      "actual": [
+        -15.89,
+        4.68
+      ],
+      "MAE": 0.62,
+      "limit_pct": 0.06,
+      "slew_pct": 0.06
+    },
+    {
+      "joint": "right_hip_roll",
+      "raw": [
+        -5.76,
+        9.35
+      ],
+      "sent": [
+        -5.76,
+        9.35
+      ],
+      "actual": [
+        -4.35,
+        8.92
+      ],
+      "MAE": 0.6,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_pitch",
+      "raw": [
+        -5.6,
+        22.94
+      ],
+      "sent": [
+        -5.6,
+        20.0
+      ],
+      "actual": [
+        -0.61,
+        21.1
+      ],
+      "MAE": 2.17,
+      "limit_pct": 0.45,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_knee",
+      "raw": [
+        -12.89,
+        18.83
+      ],
+      "sent": [
+        -12.89,
+        0.0
+      ],
+      "actual": [
+        -12.81,
+        0.72
+      ],
+      "MAE": 0.82,
+      "limit_pct": 3.18,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_ankle",
+      "raw": [
+        -26.52,
+        8.7
+      ],
+      "sent": [
+        -10.84,
+        8.7
+      ],
+      "actual": [
+        -7.75,
+        13.44
+      ],
+      "MAE": 1.22,
+      "limit_pct": 0.0,
+      "slew_pct": 0.06
+    }
+  ],
+  "forward": [
+    {
+      "joint": "left_hip_yaw",
+      "raw": [
+        -13.83,
+        3.01
+      ],
+      "sent": [
+        -13.83,
+        3.01
+      ],
+      "actual": [
+        -12.12,
+        1.77
+      ],
+      "MAE": 0.91,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_hip_roll",
+      "raw": [
+        -5.89,
+        10.23
+      ],
+      "sent": [
+        -5.89,
+        10.23
+      ],
+      "actual": [
+        -2.43,
+        9.7
+      ],
+      "MAE": 1.31,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_hip_pitch",
+      "raw": [
+        -12.7,
+        25.19
+      ],
+      "sent": [
+        -12.7,
+        20.0
+      ],
+      "actual": [
+        -11.03,
+        20.34
+      ],
+      "MAE": 6.74,
+      "limit_pct": 3.34,
+      "slew_pct": 0.39
+    },
+    {
+      "joint": "left_knee",
+      "raw": [
+        -20.25,
+        -2.04
+      ],
+      "sent": [
+        -20.25,
+        -2.04
+      ],
+      "actual": [
+        -18.81,
+        -0.44
+      ],
+      "MAE": 3.63,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_ankle",
+      "raw": [
+        -9.55,
+        20.63
+      ],
+      "sent": [
+        -9.55,
+        20.63
+      ],
+      "actual": [
+        -8.7,
+        20.21
+      ],
+      "MAE": 3.91,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "neck_pitch",
+      "raw": [
+        -7.92,
+        6.88
+      ],
+      "sent": [
+        -7.92,
+        6.88
+      ],
+      "actual": [
+        -7.29,
+        6.86
+      ],
+      "MAE": 2.08,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "head_pitch",
+      "raw": [
+        -6.93,
+        3.03
+      ],
+      "sent": [
+        -6.93,
+        3.03
+      ],
+      "actual": [
+        -4.83,
+        3.52
+      ],
+      "MAE": 1.77,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "head_yaw",
+      "raw": [
+        -17.36,
+        6.78
+      ],
+      "sent": [
+        -17.36,
+        6.78
+      ],
+      "actual": [
+        -16.21,
+        5.23
+      ],
+      "MAE": 2.55,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "head_roll",
+      "raw": [
+        -3.4,
+        15.95
+      ],
+      "sent": [
+        -3.4,
+        12.0
+      ],
+      "actual": [
+        -2.77,
+        7.6
+      ],
+      "MAE": 1.56,
+      "limit_pct": 0.59,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_yaw",
+      "raw": [
+        -17.44,
+        9.0
+      ],
+      "sent": [
+        -17.44,
+        9.0
+      ],
+      "actual": [
+        -15.89,
+        8.46
+      ],
+      "MAE": 1.08,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_roll",
+      "raw": [
+        -2.6,
+        13.47
+      ],
+      "sent": [
+        -2.6,
+        13.47
+      ],
+      "actual": [
+        -1.89,
+        11.2
+      ],
+      "MAE": 1.74,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_pitch",
+      "raw": [
+        -9.37,
+        25.72
+      ],
+      "sent": [
+        -9.37,
+        20.0
+      ],
+      "actual": [
+        -7.72,
+        20.93
+      ],
+      "MAE": 5.0,
+      "limit_pct": 6.36,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_knee",
+      "raw": [
+        -15.89,
+        1.25
+      ],
+      "sent": [
+        -15.89,
+        0.0
+      ],
+      "actual": [
+        -14.57,
+        -0.33
+      ],
+      "MAE": 2.57,
+      "limit_pct": 0.52,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_ankle",
+      "raw": [
+        -7.6,
+        18.53
+      ],
+      "sent": [
+        -7.6,
+        18.53
+      ],
+      "actual": [
+        -7.39,
+        16.86
+      ],
+      "MAE": 3.14,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    }
+  ],
+  "low": [
+    {
+      "joint": "left_hip_yaw",
+      "raw": [
+        -5.23,
+        0.15
+      ],
+      "sent": [
+        -5.23,
+        0.15
+      ],
+      "actual": [
+        -4.38,
+        0.36
+      ],
+      "MAE": 0.78,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_hip_roll",
+      "raw": [
+        6.03,
+        7.86
+      ],
+      "sent": [
+        6.03,
+        7.86
+      ],
+      "actual": [
+        4.25,
+        7.24
+      ],
+      "MAE": 0.81,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_hip_pitch",
+      "raw": [
+        -1.91,
+        2.82
+      ],
+      "sent": [
+        -1.91,
+        2.82
+      ],
+      "actual": [
+        -1.01,
+        2.68
+      ],
+      "MAE": 0.59,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_knee",
+      "raw": [
+        -7.71,
+        -1.4
+      ],
+      "sent": [
+        -7.71,
+        -1.4
+      ],
+      "actual": [
+        -4.04,
+        -0.44
+      ],
+      "MAE": 2.31,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_ankle",
+      "raw": [
+        -1.44,
+        5.95
+      ],
+      "sent": [
+        -1.44,
+        5.95
+      ],
+      "actual": [
+        -1.41,
+        6.5
+      ],
+      "MAE": 0.86,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "neck_pitch",
+      "raw": [
+        -7.09,
+        3.41
+      ],
+      "sent": [
+        -7.09,
+        3.41
+      ],
+      "actual": [
+        -7.29,
+        6.59
+      ],
+      "MAE": 1.7,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "head_pitch",
+      "raw": [
+        -3.96,
+        -0.42
+      ],
+      "sent": [
+        -3.96,
+        -0.42
+      ],
+      "actual": [
+        -4.31,
+        2.02
+      ],
+      "MAE": 0.96,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "head_yaw",
+      "raw": [
+        -5.2,
+        1.0
+      ],
+      "sent": [
+        -5.2,
+        1.0
+      ],
+      "actual": [
+        -4.61,
+        1.63
+      ],
+      "MAE": 0.95,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "head_roll",
+      "raw": [
+        -0.67,
+        0.67
+      ],
+      "sent": [
+        -0.67,
+        0.67
+      ],
+      "actual": [
+        0.66,
+        1.01
+      ],
+      "MAE": 0.7,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_yaw",
+      "raw": [
+        -2.63,
+        1.28
+      ],
+      "sent": [
+        -2.63,
+        1.28
+      ],
+      "actual": [
+        -3.41,
+        1.52
+      ],
+      "MAE": 0.64,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_roll",
+      "raw": [
+        4.73,
+        6.58
+      ],
+      "sent": [
+        4.73,
+        6.58
+      ],
+      "actual": [
+        5.4,
+        6.81
+      ],
+      "MAE": 0.65,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_pitch",
+      "raw": [
+        1.41,
+        5.63
+      ],
+      "sent": [
+        1.41,
+        5.63
+      ],
+      "actual": [
+        2.12,
+        6.78
+      ],
+      "MAE": 0.82,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_knee",
+      "raw": [
+        -6.94,
+        -1.09
+      ],
+      "sent": [
+        -6.94,
+        -1.09
+      ],
+      "actual": [
+        -1.47,
+        -0.51
+      ],
+      "MAE": 3.03,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_ankle",
+      "raw": [
+        -3.41,
+        2.81
+      ],
+      "sent": [
+        -3.41,
+        2.81
+      ],
+      "actual": [
+        -5.11,
+        0.34
+      ],
+      "MAE": 1.3,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    }
+  ],
+  "high": [
+    {
+      "joint": "left_hip_yaw",
+      "raw": [
+        -13.83,
+        3.01
+      ],
+      "sent": [
+        -13.83,
+        3.01
+      ],
+      "actual": [
+        -12.12,
+        1.77
+      ],
+      "MAE": 0.91,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_hip_roll",
+      "raw": [
+        -5.89,
+        10.23
+      ],
+      "sent": [
+        -5.89,
+        10.23
+      ],
+      "actual": [
+        -2.43,
+        9.7
+      ],
+      "MAE": 1.31,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_hip_pitch",
+      "raw": [
+        -12.7,
+        25.19
+      ],
+      "sent": [
+        -12.7,
+        20.0
+      ],
+      "actual": [
+        -11.03,
+        20.34
+      ],
+      "MAE": 6.81,
+      "limit_pct": 3.38,
+      "slew_pct": 0.4
+    },
+    {
+      "joint": "left_knee",
+      "raw": [
+        -20.25,
+        -2.04
+      ],
+      "sent": [
+        -20.25,
+        -2.04
+      ],
+      "actual": [
+        -18.81,
+        -0.44
+      ],
+      "MAE": 3.64,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "left_ankle",
+      "raw": [
+        -9.55,
+        20.63
+      ],
+      "sent": [
+        -9.55,
+        20.63
+      ],
+      "actual": [
+        -8.7,
+        20.21
+      ],
+      "MAE": 3.95,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "neck_pitch",
+      "raw": [
+        -7.92,
+        6.88
+      ],
+      "sent": [
+        -7.92,
+        6.88
+      ],
+      "actual": [
+        -7.12,
+        6.86
+      ],
+      "MAE": 2.08,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "head_pitch",
+      "raw": [
+        -6.93,
+        3.03
+      ],
+      "sent": [
+        -6.93,
+        3.03
+      ],
+      "actual": [
+        -4.83,
+        3.52
+      ],
+      "MAE": 1.78,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "head_yaw",
+      "raw": [
+        -17.36,
+        6.78
+      ],
+      "sent": [
+        -17.36,
+        6.78
+      ],
+      "actual": [
+        -16.21,
+        5.23
+      ],
+      "MAE": 2.56,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "head_roll",
+      "raw": [
+        -3.4,
+        15.95
+      ],
+      "sent": [
+        -3.4,
+        12.0
+      ],
+      "actual": [
+        -2.77,
+        7.6
+      ],
+      "MAE": 1.57,
+      "limit_pct": 0.6,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_yaw",
+      "raw": [
+        -17.44,
+        9.0
+      ],
+      "sent": [
+        -17.44,
+        9.0
+      ],
+      "actual": [
+        -15.89,
+        8.46
+      ],
+      "MAE": 1.09,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_roll",
+      "raw": [
+        -2.6,
+        13.47
+      ],
+      "sent": [
+        -2.6,
+        13.47
+      ],
+      "actual": [
+        -1.89,
+        11.2
+      ],
+      "MAE": 1.75,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_hip_pitch",
+      "raw": [
+        -9.37,
+        25.72
+      ],
+      "sent": [
+        -9.37,
+        20.0
+      ],
+      "actual": [
+        -7.72,
+        20.93
+      ],
+      "MAE": 5.05,
+      "limit_pct": 6.44,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_knee",
+      "raw": [
+        -15.89,
+        1.25
+      ],
+      "sent": [
+        -15.89,
+        0.0
+      ],
+      "actual": [
+        -14.57,
+        -0.33
+      ],
+      "MAE": 2.55,
+      "limit_pct": 0.53,
+      "slew_pct": 0.0
+    },
+    {
+      "joint": "right_ankle",
+      "raw": [
+        -7.6,
+        18.53
+      ],
+      "sent": [
+        -7.6,
+        18.53
+      ],
+      "actual": [
+        -7.39,
+        16.86
+      ],
+      "MAE": 3.16,
+      "limit_pct": 0.0,
+      "slew_pct": 0.0
+    }
+  ]
+}
