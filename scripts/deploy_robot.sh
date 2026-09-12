@@ -54,7 +54,8 @@ if [[ -z "$CHECKPOINT" ]]; then
 fi
 CHECKPOINT="$(cd "$(dirname "$CHECKPOINT")" && pwd)/$(basename "$CHECKPOINT")"
 [[ -f "$CHECKPOINT" ]] || { echo "No such checkpoint: $CHECKPOINT" >&2; exit 2; }
-NAME="${NAME:-$(basename "${CHECKPOINT%.pt}")}"
+NAME="${NAME:-$(basename "${CHECKPOINT%.pt}")}" 
+LOG_NAME="${NAME}_$(date +%Y%m%d_%H%M%S).csv"
 
 echo "== 0/4 connect =="
 echo "Authenticating to $ROBOT_HOST once; the rest of the run reuses it."
@@ -119,7 +120,7 @@ ssh "${SSH_OPTS[@]}" "$ROBOT_HOST" \
 if [[ "$RUN" -eq 0 ]]; then
   echo
   echo "Copied. To run it yourself:"
-  echo "  ssh -t $ROBOT_HOST 'cd $ROBOT_REPO && ./.venv/bin/python -u -m playground.nubzuki.cli robot --policy policies/$NAME/policy.onnx --port $SERIAL_PORT --control phone --web-port $WEB_PORT'"
+  echo "  ssh -t $ROBOT_HOST 'cd $ROBOT_REPO && ./.venv/bin/python -u -m playground.nubzuki.cli robot --policy policies/$NAME/policy.onnx --port $SERIAL_PORT --control phone --web-port $WEB_PORT --debug-log logs/$LOG_NAME'"
   exit 0
 fi
 
@@ -132,4 +133,5 @@ ssh "${SSH_OPTS[@]}" -t "$ROBOT_HOST" \
      --policy policies/$NAME/policy.onnx \
      --port $SERIAL_PORT \
      --control phone \
-     --web-port $WEB_PORT"
+     --web-port $WEB_PORT \
+     --debug-log logs/$LOG_NAME"
