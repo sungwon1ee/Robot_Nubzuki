@@ -120,7 +120,7 @@ ssh "${SSH_OPTS[@]}" "$ROBOT_HOST" \
 if [[ "$RUN" -eq 0 ]]; then
   echo
   echo "Copied. To run it yourself:"
-  echo "  ssh -t $ROBOT_HOST 'cd $ROBOT_REPO && ./.venv/bin/python -u -m playground.nubzuki.cli robot --policy policies/$NAME/policy.onnx --port $SERIAL_PORT --control phone --web-port $WEB_PORT --debug-log logs/$LOG_NAME'"
+  echo "  ssh -t $ROBOT_HOST 'sudo systemctl stop nubzuki-control.service; trap \"sudo systemctl start nubzuki-control.service\" EXIT; cd $ROBOT_REPO && ./.venv/bin/python -u -m playground.nubzuki.cli robot --policy policies/$NAME/policy.onnx --port $SERIAL_PORT --control phone --web-port $WEB_PORT --debug-log logs/$LOG_NAME'"
   exit 0
 fi
 
@@ -129,7 +129,9 @@ echo "== 6/6 run =="
 echo "Support the robot BEFORE pressing ARM. Phone: http://${ROBOT_HOST#*@}:$WEB_PORT"
 echo
 ssh "${SSH_OPTS[@]}" -t "$ROBOT_HOST" \
-  "cd $ROBOT_REPO && ./.venv/bin/python -u -m playground.nubzuki.cli robot \
+  "sudo systemctl stop nubzuki-control.service; \
+   trap 'sudo systemctl start nubzuki-control.service' EXIT; \
+   cd $ROBOT_REPO && ./.venv/bin/python -u -m playground.nubzuki.cli robot \
      --policy policies/$NAME/policy.onnx \
      --port $SERIAL_PORT \
      --control phone \
