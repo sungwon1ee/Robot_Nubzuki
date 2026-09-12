@@ -1,0 +1,10 @@
+{
+  "rows": 7386,
+  "all_valid": true,
+  "all_status_zero": true,
+  "voltage_min": 5.1,
+  "forward_voltage_min": 5.4,
+  "forward_voltage_median": 6.4,
+  "zero_command_voltage_median": 6.7,
+  "support_note": "User reports lifting slightly in latter part; exact time and applied force unknown."
+}
