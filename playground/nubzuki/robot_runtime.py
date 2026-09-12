@@ -9,6 +9,8 @@ from pathlib import Path
 
 import numpy as np
 
+from playground.nubzuki.servo_telemetry import RegisterReader, decode_status_block
+
 from playground.nubzuki.calibration import HEAD_JOINTS, NubzukiCalibration
 from playground.nubzuki.controller import (
     XboxController,
@@ -163,6 +165,16 @@ def _settled_gravity(imu, imu_filter: ImuFilter, dt: float,
     )
 
 
+def _require_upright_gravity(gravity: np.ndarray) -> None:
+    """Refuse to arm when the IMU frame is not upright."""
+    if gravity[2] > -0.9:
+        raise RuntimeError(
+            f"Projected gravity is {np.round(gravity, 3).tolist()}, "
+            f"expected about [0, 0, -1] while standing. Check "
+            f"--imu-upside-down and the IMU axis remap before arming."
+        )
+
+
 def _make_controller(control: str, host: str, web_port: int):
     if control == "phone":
         from playground.nubzuki.phone_controller import PhoneController
@@ -261,6 +273,14 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
     debug_writer = None
     debug_rows = 0
     debug_started = time.monotonic()
+    telemetry = None
+    telemetry_names = [
+        "left_hip_pitch", "right_hip_pitch", "left_knee", "right_knee",
+        "left_ankle", "right_ankle",
+    ]
+    telemetry_period = max(1, int(round(calibration.control_frequency_hz / 10)))
+    telemetry_failures = 0
+    bus_read_failures = 0
     if debug_log_path:
         path = Path(debug_log_path).expanduser()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -279,12 +299,20 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             + [f"{name}_unclipped_target_rad" for name in calibration.joint_order]
             + [f"{name}_target_rad" for name in calibration.joint_order]
             + [f"{name}_actual_rad" for name in calibration.joint_order]
+            + ["telemetry_joint", "telemetry_servo_id", "voltage_V",
+               "temperature_raw", "load_word_raw", "current_word_raw"]
         )
         debug_file.flush()
         print(f"Debug CSV: {path.resolve()}")
     try:
         hardware.disable_torque()
         hardware.preflight()
+        if debug_writer is not None:
+            try:
+                telemetry = RegisterReader(port)
+                print("Servo voltage/load telemetry: 10 Hz round-robin across leg joints")
+            except (OSError, RuntimeError) as error:
+                print(f"Servo telemetry unavailable; joint/IMU logging continues: {error}")
         # Never leave a connected robot limp while waiting for ARM.  Enter the
         # calibrated park pose gently at low gain, then hold it at runtime gain.
         previous_targets = hardware.read_positions()
@@ -322,12 +350,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                         # up here as a tilt the policy would spend the whole
                         # run fighting, so refuse to arm on it.
                         gravity = _settled_gravity(imu, imu_filter, dt)
-                        if gravity[2] > -0.9:
-                            raise RuntimeError(
-                                f"Projected gravity is {np.round(gravity, 3).tolist()}, "
-                                f"expected about [0, 0, -1] while standing. Check "
-                                f"--imu-upside-down and the IMU axis remap before arming."
-                            )
+                        _require_upright_gravity(gravity)
                         print(f"IMU check OK: projected gravity {np.round(gravity, 3).tolist()}")
                     if is_mjlab:
                         # Begin at the exact default pose exported from the
@@ -387,8 +410,30 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                 forward = forward_velocity_command(axes, mode, policy.metadata)
                 yaw_rate = yaw_rate_command(axes, mode, policy.metadata)
             imu_data = imu.read()
-            qpos = hardware.read_positions()
-            qvel = hardware.read_velocities()
+            try:
+                qpos = hardware.read_positions()
+                qvel = hardware.read_velocities()
+                bus_read_failures = 0
+            except OSError as error:
+                # A motor holds its last goal when one feedback frame is lost.
+                # Skip this policy step instead of turning a short CRC burst
+                # into an immediate fall, but still park after a sustained bus
+                # failure rather than running indefinitely on stale feedback.
+                bus_read_failures += 1
+                print(
+                    f"Servo feedback error {bus_read_failures}/5: {error}; "
+                    "holding the previous target",
+                    flush=True,
+                )
+                if bus_read_failures >= 5:
+                    print(
+                        "Servo feedback failed for 5 consecutive cycles; "
+                        "parking and stopping",
+                        flush=True,
+                    )
+                    break
+                time.sleep(max(0.0, dt - (time.monotonic() - started)))
+                continue
             contacts = feet.read()
             if is_mjlab:
                 gyro, gravity = imu_filter.read(imu_data)
@@ -428,6 +473,26 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
             )
             hardware.set_positions(dict(zip(calibration.joint_order, requested)))
             if debug_writer is not None:
+                telemetry_row = ["", "", "", "", "", ""]
+                if telemetry is not None and debug_rows % telemetry_period == 0:
+                    name = telemetry_names[(debug_rows // telemetry_period) % len(telemetry_names)]
+                    servo_id = calibration.servo_id(name)
+                    try:
+                        _, data = telemetry.read(servo_id, 56, 15)
+                        values = decode_status_block(data)
+                        telemetry_row = [
+                            name, servo_id, values["voltage_V"],
+                            values["temperature_raw"], values["load_word_raw"],
+                            values["current_word_raw"],
+                        ]
+                        telemetry_failures = 0
+                    except (OSError, TimeoutError) as error:
+                        telemetry_failures += 1
+                        if telemetry_failures == 1:
+                            print(
+                                f"Servo telemetry read failed; control continues: {error}",
+                                flush=True,
+                            )
                 gravity_row = (
                     imu_filter.last if imu_filter.last is not None else np.zeros(3)
                 )
@@ -436,6 +501,7 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
                      *observation_gyro, *gravity_row, *contacts]
                     + list(qvel) + list(action_runtime)
                     + list(unclipped_target) + list(requested) + list(qpos)
+                    + telemetry_row
                 )
                 debug_rows += 1
                 if debug_rows % calibration.control_frequency_hz == 0:
@@ -493,3 +559,5 @@ def run_robot(policy_path: str, port: str, calibration_path: str | None,
         feet.close()
         if debug_file is not None:
             debug_file.close()
+        if telemetry is not None:
+            telemetry.close()

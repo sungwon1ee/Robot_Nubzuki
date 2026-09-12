@@ -712,6 +712,8 @@ class SafeStopTests(unittest.TestCase):
         self.assertIn('f"{name}_action"', source)
         self.assertIn('f"{name}_unclipped_target_rad"', source)
         self.assertIn("*observation_gyro", source)
+        self.assertIn('"voltage_V"', source)
+        self.assertIn("decode_status_block", source)
 
     def test_park_lands_on_the_calibrated_pose_without_cutting_torque(self):
         hardware = RecordingHardware()
