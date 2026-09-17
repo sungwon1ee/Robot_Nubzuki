@@ -12,7 +12,7 @@
 #
 set -euo pipefail
 
-ROBOT_HOST="${ROBOT_HOST:-sungwon@192.168.45.18}"
+ROBOT_HOST="${ROBOT_HOST:-sungwon@nubzuki.local}"
 ROBOT_REPO="${ROBOT_REPO:-~/Robot_Nubzuki}"
 ROBOT_BRANCH="${ROBOT_BRANCH:-walking}"
 SERIAL_PORT="${SERIAL_PORT:-/dev/ttyACM0}"

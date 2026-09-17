@@ -466,3 +466,72 @@ iterations: parent has 100 (default), child has 1, keeping parent value
 ls_iterations: parent has 50 (default), child has 5, keeping parent value
 sdf_iterations: parent has 10 (default), child has 20, keeping parent value
 
+WARNING Sun Sep 13 16:44:13 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 17:11:47 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 17:32:15 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 17:33:45 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 17:34:22 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 17:50:59 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 17:53:18 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 17:54:56 2026: Attach conflict when attaching 'nubzuki_mjx' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 4, keeping parent value
+ls_iterations: parent has 50 (default), child has 4, keeping parent value
+
+WARNING Sun Sep 13 17:58:06 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 18:03:46 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 18:09:51 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 23:27:29 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 23:28:22 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+
+WARNING Sun Sep 13 23:28:42 2026: Attach conflict when attaching 'nubzuki_v1' to 'mjlab scene', policy is 'warning'
+iterations: parent has 100 (default), child has 1, keeping parent value
+ls_iterations: parent has 50 (default), child has 5, keeping parent value
+sdf_iterations: parent has 10 (default), child has 20, keeping parent value
+

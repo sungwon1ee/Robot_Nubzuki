@@ -120,6 +120,56 @@ def get_nubzuki_detailed_spec() -> mujoco.MjSpec:
     return spec
 
 
+def get_nubzuki_detailed_visual_light_collision_spec() -> mujoco.MjSpec:
+    """Detailed render meshes with the lightweight training collisions.
+
+    The detailed asset's unnamed mesh geoms are visual-only (contype and
+    conaffinity are zero). Replace every named collision/proxy geom with the
+    primitive set from the training model, keeping the CAD appearance while
+    avoiding SDF collision work during crowd playback.
+    """
+    detailed = get_nubzuki_detailed_spec()
+    lightweight = get_nubzuki_spec()
+
+    for body in detailed.bodies:
+        for geom in list(body.geoms):
+            if geom.name and ("collision" in geom.name or "proxy" in geom.name):
+                detailed.delete(geom)
+
+    for source_body in lightweight.bodies:
+        target_body = detailed.body(source_body.name)
+        if target_body is None:
+            raise RuntimeError(f"Detailed model is missing body {source_body.name!r}")
+        for source in source_body.geoms:
+            if not source.name or "collision" not in source.name:
+                continue
+            target = target_body.add_geom()
+            target.name = source.name
+            target.type = source.type
+            target.pos = list(source.pos)
+            target.quat = list(source.quat)
+            target.size = list(source.size)
+            if source.type in (mujoco.mjtGeom.mjGEOM_CAPSULE, mujoco.mjtGeom.mjGEOM_CYLINDER):
+                target.fromto = list(source.fromto)
+            target.contype = source.contype
+            target.conaffinity = source.conaffinity
+            target.condim = source.condim
+            target.friction = list(source.friction)
+            target.solref = list(source.solref)
+            target.solimp = list(source.solimp)
+            target.margin = source.margin
+            target.gap = source.gap
+            # The training model draws its collision primitives as
+            # translucent red boxes in the default visible group. Overlaid on
+            # the CAD shell they read as a second, blocky robot, so hide them:
+            # group 3 is off by default in the viewer, and a zero alpha keeps
+            # them invisible even if that group is toggled on.
+            target.group = 3
+            target.rgba = [0.8, 0.2, 0.2, 0.0]
+            target.density = source.density
+    return detailed
+
+
 def _floor_at_park(spec: mujoco.MjSpec, pose: dict[str, float]) -> None:
     """Stop the head pitching below its park pose.
 
@@ -396,6 +446,16 @@ NUBZUKI_BAM_ROBOT_CFG = EntityCfg(
 NUBZUKI_BAM_DETAILED_ROBOT_CFG = EntityCfg(
     spec_fn=get_nubzuki_detailed_spec,
     init_state=DETAILED_HOME_FRAME,
+    articulation=EntityArticulationInfoCfg(
+        actuators=ACTUATORS,
+        soft_joint_pos_limit_factor=0.9,
+    ),
+)
+
+NUBZUKI_BAM_DETAILED_VISUAL_LIGHT_COLLISION_ROBOT_CFG = EntityCfg(
+    spec_fn=get_nubzuki_detailed_visual_light_collision_spec,
+    # Physics now matches the training model, including its floor height.
+    init_state=HOME_FRAME,
     articulation=EntityArticulationInfoCfg(
         actuators=ACTUATORS,
         soft_joint_pos_limit_factor=0.9,

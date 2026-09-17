@@ -37,3 +37,21 @@ uv run train Mjlab-Velocity-Flat-BAM-Nubzuki \
   --agent.max-iterations 50000 \
   --agent.logger tensorboard
 ```
+
+## Film a robot crowd
+
+The crowd player composites parallel MJLab environments into one native
+MuJoCo view. Each robot runs the same policy with its own randomly resampled
+walking command. The robots do not physically collide with each other.
+
+```bash
+uv run mjpython src/mjlab_nubzuki/play_crowd.py \
+  --checkpoint checkpoints/walking_v2/model_3950.pt \
+  --robots 36
+```
+
+The crowd player keeps the detailed CAD exterior but replaces its expensive
+SDF contacts with the lightweight training collision shapes. It also disables
+shadows/reflections and spaces robots 1 m apart. Use `--spacing 1.5` for a
+wider formation, `--command-arrows` to show target directions, or
+`--distance 8` to override the automatic camera framing.
