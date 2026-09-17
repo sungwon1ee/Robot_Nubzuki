@@ -1,0 +1,315 @@
+{
+  "file": "v2_3950_20260917_225706.csv",
+  "excluded_incomplete_rows": 1,
+  "rows": 5487,
+  "start_s": 21.612652176999973,
+  "end_s": 132.33740289899993,
+  "duration_s": 110.72475072199995,
+  "interval_ms": {
+    "0.5": 20.05789000004654,
+    "0.95": 21.38187624993293,
+    "0.99": 22.959558749980854,
+    "1.0": 259.59119699996336
+  },
+  "intervals_over_40ms": 3,
+  "intervals_over_80ms": 3,
+  "commands": {
+    "forward_cmd_m_s": {
+      "count": 5487.0,
+      "mean": 0.03952985757925996,
+      "std": 0.08642302662220168,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 0.0,
+      "max": 0.2499895929237626
+    },
+    "yaw_cmd_rad_s": {
+      "count": 5487.0,
+      "mean": -0.0017283367734491173,
+      "std": 0.03734868526416173,
+      "min": -0.2978804683096587,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 0.0,
+      "max": 0.0344817685902956
+    }
+  },
+  "joints": [
+    {
+      "joint": "left_hip_pitch",
+      "mean_abs_error_deg": 1.9564228040496763,
+      "p95_abs_error_deg": 7.707763509437879,
+      "max_abs_error_deg": 16.989580596383398,
+      "actual_range_deg": 29.267578124999993,
+      "target_range_deg": 28.559460839666514
+    },
+    {
+      "joint": "left_ankle",
+      "mean_abs_error_deg": 1.4540725735948534,
+      "p95_abs_error_deg": 7.8438871445034035,
+      "max_abs_error_deg": 42.219120361230985,
+      "actual_range_deg": 49.39453125,
+      "target_range_deg": 50.00651029601215
+    },
+    {
+      "joint": "right_hip_pitch",
+      "mean_abs_error_deg": 1.4094961023990937,
+      "p95_abs_error_deg": 6.547269924777767,
+      "max_abs_error_deg": 23.474531250000005,
+      "actual_range_deg": 43.417968749999986,
+      "target_range_deg": 40.0
+    },
+    {
+      "joint": "right_ankle",
+      "mean_abs_error_deg": 1.3894967972471841,
+      "p95_abs_error_deg": 5.978768631809208,
+      "max_abs_error_deg": 30.618721418943757,
+      "actual_range_deg": 36.47460937499999,
+      "target_range_deg": 38.063776829404055
+    },
+    {
+      "joint": "left_knee",
+      "mean_abs_error_deg": 1.225371371119127,
+      "p95_abs_error_deg": 5.760702029023699,
+      "max_abs_error_deg": 40.202871785202056,
+      "actual_range_deg": 44.73632812500002,
+      "target_range_deg": 45.0
+    },
+    {
+      "joint": "head_pitch",
+      "mean_abs_error_deg": 1.200198687267214,
+      "p95_abs_error_deg": 2.8903544705922033,
+      "max_abs_error_deg": 21.97402805237478,
+      "actual_range_deg": 26.103515624999996,
+      "target_range_deg": 25.817647194690053
+    },
+    {
+      "joint": "neck_pitch",
+      "mean_abs_error_deg": 1.0136176275289148,
+      "p95_abs_error_deg": 2.4619284719550945,
+      "max_abs_error_deg": 7.0899357808744,
+      "actual_range_deg": 21.18164062500001,
+      "target_range_deg": 20.129227024169303
+    },
+    {
+      "joint": "right_knee",
+      "mean_abs_error_deg": 0.9028136417811339,
+      "p95_abs_error_deg": 4.075388611016559,
+      "max_abs_error_deg": 25.687280082556317,
+      "actual_range_deg": 43.76953124999999,
+      "target_range_deg": 45.0
+    },
+    {
+      "joint": "right_hip_roll",
+      "mean_abs_error_deg": 0.8087918596408363,
+      "p95_abs_error_deg": 2.0552656969201806,
+      "max_abs_error_deg": 8.427734375000007,
+      "actual_range_deg": 22.763671874999993,
+      "target_range_deg": 21.623149342230022
+    },
+    {
+      "joint": "head_yaw",
+      "mean_abs_error_deg": 0.6774694103305904,
+      "p95_abs_error_deg": 3.0964560201622695,
+      "max_abs_error_deg": 38.73944572264671,
+      "actual_range_deg": 43.681640624999986,
+      "target_range_deg": 47.04316200684302
+    },
+    {
+      "joint": "left_hip_roll",
+      "mean_abs_error_deg": 0.6082638882766019,
+      "p95_abs_error_deg": 2.0844246963826816,
+      "max_abs_error_deg": 12.980253726527167,
+      "actual_range_deg": 22.32421875,
+      "target_range_deg": 22.143111580062403
+    },
+    {
+      "joint": "head_roll",
+      "mean_abs_error_deg": 0.542897210838971,
+      "p95_abs_error_deg": 2.676830327956228,
+      "max_abs_error_deg": 9.275390624999996,
+      "actual_range_deg": 18.017578125000007,
+      "target_range_deg": 20.19924936272303
+    },
+    {
+      "joint": "left_hip_yaw",
+      "mean_abs_error_deg": 0.42454097761013565,
+      "p95_abs_error_deg": 1.8109791630106886,
+      "max_abs_error_deg": 10.85937500000001,
+      "actual_range_deg": 22.58789062499998,
+      "target_range_deg": 22.573965233074272
+    },
+    {
+      "joint": "right_hip_yaw",
+      "mean_abs_error_deg": 0.38012618793550484,
+      "p95_abs_error_deg": 1.7477420205607803,
+      "max_abs_error_deg": 14.322030500759595,
+      "actual_range_deg": 28.740234375000014,
+      "target_range_deg": 28.65368313918428
+    }
+  ],
+  "voltage": {
+    "left_ankle": {
+      "count": 183,
+      "min": 5.5,
+      "median": 6.9,
+      "max": 7.1
+    },
+    "left_hip_pitch": {
+      "count": 183,
+      "min": 5.0,
+      "median": 6.9,
+      "max": 7.2
+    },
+    "left_knee": {
+      "count": 183,
+      "min": 5.0,
+      "median": 6.9,
+      "max": 7.3
+    },
+    "right_ankle": {
+      "count": 183,
+      "min": 4.8,
+      "median": 6.8,
+      "max": 7.0
+    },
+    "right_hip_pitch": {
+      "count": 183,
+      "min": 5.3,
+      "median": 6.9,
+      "max": 7.2
+    },
+    "right_knee": {
+      "count": 183,
+      "min": 5.3,
+      "median": 6.8,
+      "max": 7.1
+    }
+  },
+  "voltage_min_time_s": 58.28260670399993,
+  "gaps": [
+    {
+      "time_s": 64.90146189799998,
+      "interval_ms": 259.59119699996336
+    },
+    {
+      "time_s": 96.06766755899991,
+      "interval_ms": 154.59032999991962
+    },
+    {
+      "time_s": 132.33740289899993,
+      "interval_ms": 144.3635790000144
+    }
+  ],
+  "segments": [
+    {
+      "start_s": 21.612652176999973,
+      "rows": 499,
+      "forward_min": 0.0,
+      "forward_max": 0.0,
+      "yaw_abs_max": 0.0,
+      "target_leg_range_max_deg": 13.00545871454795,
+      "voltage_min": 6.1
+    },
+    {
+      "start_s": 31.612652176999973,
+      "rows": 498,
+      "forward_min": 0.0,
+      "forward_max": 0.0,
+      "yaw_abs_max": 0.0,
+      "target_leg_range_max_deg": 3.7030170473217385,
+      "voltage_min": 6.8
+    },
+    {
+      "start_s": 41.61265217699997,
+      "rows": 498,
+      "forward_min": 0.0,
+      "forward_max": 0.2371826422214021,
+      "yaw_abs_max": 0.0344817685902956,
+      "target_leg_range_max_deg": 22.05521896901735,
+      "voltage_min": 5.6
+    },
+    {
+      "start_s": 51.61265217699997,
+      "rows": 496,
+      "forward_min": 0.0,
+      "forward_max": 0.2499179221490502,
+      "yaw_abs_max": 0.1743413731913742,
+      "target_leg_range_max_deg": 27.876405210398453,
+      "voltage_min": 4.8
+    },
+    {
+      "start_s": 61.61265217699997,
+      "rows": 485,
+      "forward_min": 0.0,
+      "forward_max": 0.2499895929237626,
+      "yaw_abs_max": 0.2978804683096587,
+      "target_leg_range_max_deg": 50.00651029601215,
+      "voltage_min": 5.3
+    },
+    {
+      "start_s": 71.61265217699997,
+      "rows": 497,
+      "forward_min": 0.0,
+      "forward_max": 0.1453078216644109,
+      "yaw_abs_max": 0.0115130634510478,
+      "target_leg_range_max_deg": 45.0,
+      "voltage_min": 5.3
+    },
+    {
+      "start_s": 81.61265217699997,
+      "rows": 498,
+      "forward_min": 0.0,
+      "forward_max": 0.0,
+      "yaw_abs_max": 0.0,
+      "target_leg_range_max_deg": 6.107889194764486,
+      "voltage_min": 6.6
+    },
+    {
+      "start_s": 91.61265217699997,
+      "rows": 492,
+      "forward_min": 0.0,
+      "forward_max": 0.0,
+      "yaw_abs_max": 0.0,
+      "target_leg_range_max_deg": 0.9084265788342161,
+      "voltage_min": 6.6
+    },
+    {
+      "start_s": 101.61265217699997,
+      "rows": 497,
+      "forward_min": 0.0,
+      "forward_max": 0.0,
+      "yaw_abs_max": 0.0,
+      "target_leg_range_max_deg": 0.8836436643176485,
+      "voltage_min": 6.8
+    },
+    {
+      "start_s": 111.61265217699997,
+      "rows": 499,
+      "forward_min": 0.0,
+      "forward_max": 0.0,
+      "yaw_abs_max": 0.0,
+      "target_leg_range_max_deg": 0.8087980245058288,
+      "voltage_min": 6.7
+    },
+    {
+      "start_s": 121.61265217699997,
+      "rows": 498,
+      "forward_min": 0.0,
+      "forward_max": 0.0,
+      "yaw_abs_max": 0.0,
+      "target_leg_range_max_deg": 0.9860395124769509,
+      "voltage_min": 6.7
+    },
+    {
+      "start_s": 131.61265217699997,
+      "rows": 30,
+      "forward_min": 0.0,
+      "forward_max": 0.0,
+      "yaw_abs_max": 0.0,
+      "target_leg_range_max_deg": 0.028726068101781226,
+      "voltage_min": 6.7
+    }
+  ]
+}
